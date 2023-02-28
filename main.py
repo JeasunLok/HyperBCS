@@ -11,6 +11,7 @@ from scipy.io import loadmat
 from scipy.io import savemat
 
 from models.vit_pytorch import ViT
+from models.other_models import MLP_4
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.metrics import output_metric
 from train import train_epoch,valid_epoch
@@ -94,6 +95,9 @@ model = ViT(
     emb_dropout = 0.1,
     mode = mode
 )
+
+# model = MLP_4(input_channels = band, num_classes = num_classes)
+
 model = model.cuda()
 
 # criterion
