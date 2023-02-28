@@ -57,6 +57,7 @@ def position_train_and_test_point(train_data, test_data, label_data, num_classes
     return total_position_train, total_position_test, total_position_label, number_train, number_test, number_label
 #-------------------------------------------------------------------------------
 
+# VIT model use
 # expand the border by mirror
 # 边界拓展：镜像
 # the pixels' value closed to the border must be valid when divided into patches
