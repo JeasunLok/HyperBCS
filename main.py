@@ -14,12 +14,13 @@ from models.vit_pytorch import ViT
 from models.other_models import MLP_4
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.metrics import output_metric
+from utils.utils import load_wetland_data
 from train import train_epoch,valid_epoch
 from test import test_epoch
 
 # setting the parameters
-gpu=0
-epoch = 20
+gpu = 0
+epoch = 10
 test_freq = 5
 batch_size = 64
 patches = 7
@@ -39,14 +40,18 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
 cudnn.deterministic = True
 cudnn.benchmark = False
 
-# data loading
-data = loadmat('./data/IndianPine.mat')
+# IndianPine data loading
+# data = loadmat('./data/IndianPine.mat')
 color_mat = loadmat('./data/AVIRIS_colormap.mat')
-train_data = data['TR']
-test_data = data['TE']
-input = data['input'] #(145,145,200)
+# train_data = data['TR']
+# test_data = data['TE']
+# input = data['input'] #(145,145,200)
+
+# Wetland data loading
+input, train_data, test_data = load_wetland_data(r".\\data\\15_image.mat", r".\\data\\15_label.mat", 11, 2015, "fixed", 200)
+
 label = train_data + test_data
-num_classes = np.max(train_data)
+num_classes = int(np.max(train_data))
 
 # color settings
 color_mat_list = list(color_mat)
@@ -69,10 +74,10 @@ y_train, y_test, y_true = train_and_test_label(number_train, number_test, number
 
 # data processing
 x_train=torch.from_numpy(x_train_band.transpose(0,2,1)).type(torch.FloatTensor) 
-y_train=torch.from_numpy(y_train).type(torch.LongTensor) #[695]
+y_train=torch.from_numpy(y_train).type(torch.LongTensor)
 label_train=Data.TensorDataset(x_train,y_train)
 x_test=torch.from_numpy(x_test_band.transpose(0,2,1)).type(torch.FloatTensor) 
-y_test=torch.from_numpy(y_test).type(torch.LongTensor) # [9671]
+y_test=torch.from_numpy(y_test).type(torch.LongTensor) 
 label_test=Data.TensorDataset(x_test,y_test)
 x_true=torch.from_numpy(x_true_band.transpose(0,2,1)).type(torch.FloatTensor)
 y_true=torch.from_numpy(y_true).type(torch.LongTensor)
