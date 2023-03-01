@@ -1,6 +1,5 @@
 import numpy as np
 from utils.utils import AverageMeter
-from utils.metrics import accuracy
 
 #-------------------------------------------------------------------------------
 def test_epoch(model, test_loader):

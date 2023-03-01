@@ -20,9 +20,9 @@ def accuracy(output, label, topk=(1,)):
 
 #-------------------------------------------------------------------------------
 def output_metric(label, prediction):
-    matrix = confusion_matrix(label, prediction)
-    OA, AA, Kappa, CA = cal_results(matrix)
-    return OA, AA, Kappa, CA
+    CM = confusion_matrix(label, prediction)
+    OA, AA, Kappa, CA = cal_results(CM)
+    return OA, AA, Kappa, CA, CM
 #-------------------------------------------------------------------------------
 
 # calculating the OA(overall accuracy), AA(average accuracy), Kappa, CA(class accuracy)

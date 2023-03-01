@@ -8,8 +8,8 @@ def position_train_and_test_point(train_data, test_data, label_data, num_classes
     position_train = {} # record the position of train samples 记录训练样本位置
     number_test = [] # count the number of test samples 计数测试样本数量
     position_test = {} # record the position of test samples 记录测试样本位置
-    number_label = [] # count the number of true samples 计数总样本数量
-    position_label = {} # record the position of true samples 记录总样本位置
+    number_true = [] # count the number of all pixels 计数总像元数量
+    position_true = {} # record the position of all pixels 记录总像元位置
     #-------------------------for train data------------------------------------
     for i in range(num_classes):
         each_class = []
@@ -46,15 +46,15 @@ def position_train_and_test_point(train_data, test_data, label_data, num_classes
     for i in range(num_classes+1):
         each_class = []
         each_class = np.argwhere(label_data==i)
-        number_label.append(each_class.shape[0])
-        position_label[i] = each_class
+        number_true.append(each_class.shape[0])
+        position_true[i] = each_class
 
-    total_position_label = position_label[0]
+    total_position_true = position_true[0]
     for i in range(1, num_classes+1):
-        total_position_label = np.r_[total_position_label, position_label[i]]
-    total_position_label = total_position_label.astype(int)
+        total_position_true = np.r_[total_position_true, position_true[i]]
+    total_position_true = total_position_true.astype(int)
 
-    return total_position_train, total_position_test, total_position_label, number_train, number_test, number_label
+    return total_position_train, total_position_test, total_position_true, number_train, number_test, number_true
 #-------------------------------------------------------------------------------
 
 # VIT model use
@@ -138,42 +138,42 @@ def gain_neighborhood_band(x_train, band, band_patch, patch=5):
 # to summarize the train data and test data by using gain neighbor pixel and band
 # 汇总训练数据和测试数据
 #-------------------------------------------------------------------------------
-def train_and_test_data(mirror_image, band, train_point, test_point, label_point, patch=5, band_patch=3):
+def train_and_test_data(mirror_image, band, train_point, test_point, true_point, patch=5, band_patch=3):
     x_train = np.zeros((train_point.shape[0], patch, patch, band), dtype=float)
     x_test = np.zeros((test_point.shape[0], patch, patch, band), dtype=float)
-    x_label = np.zeros((label_point.shape[0], patch, patch, band), dtype=float)
+    x_true = np.zeros((true_point.shape[0], patch, patch, band), dtype=float)
 
     # 1. get 2D patch
     for i in range(train_point.shape[0]):
         x_train[i,:,:,:] = gain_neighborhood_pixel(mirror_image, train_point, i, patch)
     for j in range(test_point.shape[0]):
         x_test[j,:,:,:] = gain_neighborhood_pixel(mirror_image, test_point, j, patch)
-    for k in range(label_point.shape[0]):
-        x_label[k,:,:,:] = gain_neighborhood_pixel(mirror_image, label_point, k, patch)
+    for k in range(true_point.shape[0]):
+        x_true[k,:,:,:] = gain_neighborhood_pixel(mirror_image, true_point, k, patch)
 
     print("x_train shape = {}, type = {}".format(x_train.shape,x_train.dtype))
     print("x_test  shape = {}, type = {}".format(x_test.shape,x_test.dtype))
-    print("x_true  shape = {}, type = {}".format(x_label.shape,x_test.dtype))
+    print("x_true  shape = {}, type = {}".format(x_true.shape,x_test.dtype))
     print("===============================================================================")
     
     # 2. using 2D patch to get 3D patch
     x_train_band = gain_neighborhood_band(x_train, band, band_patch, patch)
     x_test_band = gain_neighborhood_band(x_test, band, band_patch, patch)
-    x_label_band = gain_neighborhood_band(x_label, band, band_patch, patch)
+    x_true_band = gain_neighborhood_band(x_true, band, band_patch, patch)
     print("x_train_band shape = {}, type = {}".format(x_train_band.shape,x_train_band.dtype))
     print("x_test_band  shape = {}, type = {}".format(x_test_band.shape,x_test_band.dtype))
-    print("x_true_band  shape = {}, type = {}".format(x_label_band.shape,x_label_band.dtype))
+    print("x_true_band  shape = {}, type = {}".format(x_true_band.shape,x_true_band.dtype))
     print("===============================================================================")
-    return x_train_band, x_test_band, x_label_band
+    return x_train_band, x_test_band, x_true_band
 #-------------------------------------------------------------------------------
 
 # create the label of the train data and test data
 # 创建标签y_train, y_test
 #-------------------------------------------------------------------------------
-def train_and_test_label(number_train, number_test, number_label, num_classes):
+def train_and_test_label(number_train, number_test, number_true, num_classes):
     y_train = []
     y_test = []
-    y_label = []
+    y_true = []
 
     # The lable is in order which means we can using the number of each class's samples to get the label
     for i in range(num_classes):
@@ -182,16 +182,16 @@ def train_and_test_label(number_train, number_test, number_label, num_classes):
         for k in range(number_test[i]):
             y_test.append(i)
     for i in range(num_classes+1):
-        for j in range(number_label[i]):
-            y_label.append(i)
+        for j in range(number_true[i]):
+            y_true.append(i)
 
     y_train = np.array(y_train)
     y_test = np.array(y_test)
-    y_label = np.array(y_label)
+    y_true = np.array(y_true)
 
     print("y_train: shape = {} ,type = {}".format(y_train.shape,y_train.dtype))
     print("y_test: shape = {} ,type = {}".format(y_test.shape,y_test.dtype))
-    print("y_true: shape = {} ,type = {}".format(y_label.shape,y_label.dtype))
+    print("y_true: shape = {} ,type = {}".format(y_true.shape,y_true.dtype))
     print("===============================================================================")
-    return y_train, y_test, y_label
+    return y_train, y_test, y_true
 #-------------------------------------------------------------------------------
