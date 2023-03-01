@@ -19,6 +19,13 @@ from utils.utils import load_wetland_data
 from train import train_epoch,valid_epoch
 from test import test_epoch
 
+# make the run folder in logs
+#-------------------------------------------------------------------------------
+time_now = time.localtime()
+time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now)
+os.makedirs(time_folder)
+#-------------------------------------------------------------------------------
+
 #-------------------------------------------------------------------------------
 # setting the parameters
 gpu = 0
@@ -58,11 +65,11 @@ cudnn.benchmark = False
 
 #-------------------------------------------------------------------------------
 # wetland data loading
-input, train_label, test_label = load_wetland_data(r".\\data\\15_image.mat", r".\\data\\15_label.mat", 11, 2015, "fixed", 200)
+input, train_label, test_label = load_wetland_data(time_folder, r".\\data\\15_image.mat", r".\\data\\15_label.mat", 11, 2015, "fixed", 200)
 
 # color settings
-color_mat = loadmat(r".\\data\\wetland_colormap.mat")
-color_matrix = color_mat["colormap_2015"]
+colormap_mat = loadmat(r".\\data\\wetland_colormap.mat")
+colormap = colormap_mat["colormap_2015"]
 #-------------------------------------------------------------------------------
 
 # all_data and classes
@@ -130,19 +137,15 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epoch//10, gamm
 
 # train
 print("start training")
-time_now = time.localtime()
-time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now)
-os.makedirs(time_folder)
-
 tic = time.time()
-epoch_loss = np.zeros([epoch, 2])
+epoch_loss = np.zeros([2, epoch])
 for e in range(epoch): 
     model.train()
     train_acc, train_loss, label_t, prediction_t = train_epoch(model, train_loader, criterion, optimizer)
     scheduler.step()
     OA_train, AA_train, Kappa_train, CA_train, CM_train = output_metric(label_t, prediction_t) 
     print("Epoch: {:03d} | train_loss: {:.4f} | train_acc: {:.4f}".format(e+1, train_loss, train_acc))
-    epoch_loss[e][0], epoch_loss[e][1] = e+1, train_loss
+    epoch_loss[0][e], epoch_loss[1][e] = e+1, train_loss
 
     if ((e+1) % test_freq == 0) | (e == epoch - 1):         
         model.eval()
@@ -178,7 +181,7 @@ print("end testing")
 print("===============================================================================")
 
 plt.subplot(1,1,1)
-plt.imshow(prediction, colors.ListedColormap(color_matrix))
+plt.imshow(prediction, colors.ListedColormap(colormap))
 plt.xticks([])
 plt.yticks([])
 plt.show()
