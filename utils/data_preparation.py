@@ -135,9 +135,9 @@ class HSI_Dataset(torch.utils.data.Dataset):
         return data, label
 
 if __name__ == "__main__":
-    image = loadmat(r"E:\UniversityGrade3_Tail\Project\Wetland_HSI_Transformer\Wetland_HSI_Transformer\data\15_image.mat")
+    image = loadmat(r".\\data\\15_image.mat")
     image = image["image_15"]
-    label = loadmat(r"E:\UniversityGrade3_Tail\Project\Wetland_HSI_Transformer\Wetland_HSI_Transformer\data\15_label.mat")
+    label = loadmat(r".\\data\\15_label.mat")
     label = label["label_15"]
     train_dataset = HSI_Dataset(image, label)
     print(train_dataset.data)
