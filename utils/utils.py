@@ -23,8 +23,8 @@ class AverageMeter(object):
 #-------------------------------------------------------------------------------
 
 # a function to load our wetland data
-def load_wetland_data(time_folder, image_path, label_path, num_classes, year, mode, value):
-  data_year=str(year)[-2:]
+def load_wetland_data(time_folder, image_path, label_path, year, mode, value, save_colormap):
+  data_year = str(year)[-2:]
   image = loadmat(image_path)
   label = loadmat(label_path)
   image_mark = "image_" + data_year
@@ -33,6 +33,7 @@ def load_wetland_data(time_folder, image_path, label_path, num_classes, year, mo
   label = label[label_mark]
   train_label = np.zeros(label.shape)
   test_label = label
+  num_classes = int(np.max(label))
   for i in range(num_classes):
     sample = np.array([])
     train_sample_num = 0
@@ -50,6 +51,6 @@ def load_wetland_data(time_folder, image_path, label_path, num_classes, year, mo
       test_label[sample_position[j][0]][sample_position[j][1]] = 0
 
   # save the image of train and test samples
-  plt.imsave(time_folder + r"\\train_label.png",train_label)
-  plt.imsave(time_folder + r"\\test_label.png",test_label)
+  plt.imsave(time_folder + r"\\train_label.png", train_label, cmap=save_colormap, dpi=300)
+  plt.imsave(time_folder + r"\\test_label.png", test_label, cmap=save_colormap, dpi=300)
   return image, train_label, test_label
