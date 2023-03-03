@@ -21,14 +21,14 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "CNN_RNN" # CNN or Transformer
-Transformer_mode = "CAF" # if Transformer
-CNN_mode = "CNN_2D" # MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
+model_type = "Transformer" # CNN or Transformer
+Transformer_mode = "CAF" # if Transformer : VIT CAF
+CNN_mode = "CNN_2D" # if CNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
 gpu = 0
-epoch = 20
-test_freq = 10
-batch_size = 64
-patches = 3
+epoch = 1000
+test_freq = 50
+batch_size = 128
+patches = 7
 band_patches = 3
 learning_rate = 5e-4
 weight_decay = 5e-3
@@ -36,7 +36,7 @@ gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
-HSI_data = "IndianPine" # IndianPine or wetland
+HSI_data = "wetland" # IndianPine or wetland
 year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ elif model_type == "CNN_RNN":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -286,6 +286,8 @@ else:
     plt.imsave(time_folder + r"\\prediction_result.png", prediction, dpi=300)
 
 draw_result_visualization(time_folder, epoch_loss)
-store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val)
+if model_type == "Transformer":
+    store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+elif model_type == "CNN":
+    store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
-
