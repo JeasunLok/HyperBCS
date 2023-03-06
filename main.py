@@ -21,9 +21,9 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "Transformer" # CNN or Transformer
+model_type = "Transformer" # CNN_RNN or Transformer
 Transformer_mode = "CAF" # if Transformer : VIT CAF
-CNN_mode = "CNN_2D" # if CNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
+CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
 gpu = 0
 epoch = 1000
 test_freq = 100
