@@ -21,12 +21,12 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "Transformer" # CNN_RNN or Transformer
+model_type = "CNN_RNN" # CNN_RNN or Transformer
 Transformer_mode = "CAF" # if Transformer : VIT CAF
-CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
+CNN_mode = "CNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
 gpu = 0
-epoch = 1000
-test_freq = 100
+epoch = 500
+test_freq = 500
 batch_size = 128
 patches = 3
 band_patches = 3
@@ -288,6 +288,6 @@ else:
 draw_result_visualization(time_folder, epoch_loss)
 if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "CNN":
+elif model_type == "CNN_RNN":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
