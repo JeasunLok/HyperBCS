@@ -11,6 +11,9 @@ from scipy.io import loadmat,savemat
 
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
+
+from models.ACmix_2D import ACmix_ResNet
+
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
 from utils.metrics import output_metric
@@ -21,22 +24,25 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "Transformer" # CNN or Transformer
-Transformer_mode = "CAF" # if Transformer : VIT CAF
-CNN_mode = "CNN_2D" # if CNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
+model_type = "ACmix" # CNN_RNN or Transformer or ACmix
+Transformer_mode = "ViT" # if Transformer : ViT CAF
+CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+
+ACmix_mode = "2D" # if ACmix : 2D 3D
+
 gpu = 0
-epoch = 1000
-test_freq = 100
-batch_size = 128
-patches = 3
-band_patches = 3
+epoch = 300
+test_freq = 1000
+batch_size = 64
+patches = 1
+band_patches = 1
 learning_rate = 5e-4
 weight_decay = 5e-3
 gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
-HSI_data = "wetland" # IndianPine or wetland
+HSI_data = "IndianPine" # IndianPine or wetland
 year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
@@ -53,6 +59,17 @@ elif model_type == "CNN_RNN":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
+        
+
+
+elif model_type == "ACmix":
+    if HSI_data == "IndianPine":
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data
+    else:
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data + str(year)
+
+
+
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -89,8 +106,10 @@ elif HSI_data == "wetland":
     colormap = colormap_mat["colormap_" + str(year)]
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
-    if model_type == "CNN_RNN":
+
+    if model_type == "CNN_RNN" or model_type == "ACmix":
         save_colormap_2 = save_colormap_1
+
     elif model_type == "Transformer":
         save_colormap_2 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap.tolist(), 256)
 
@@ -216,6 +235,29 @@ elif model_type == "CNN_RNN":
 
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+elif model_type == "ACmix":
+    if ACmix_mode == "2D":
+        model = ACmix_ResNet(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 32
+
+    train_dataset = HSI_Dataset(input_normalize, train_label, True, patches)
+    train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
+
+    test_dataset = HSI_Dataset(input_normalize, test_label, True, patches)
+    test_loader = Data.DataLoader(test_dataset, batch_size, shuffle = True)
+
+    true_dataset = HSI_Dataset(input_normalize, test_label, False, patches)
+    true_loader = Data.DataLoader(true_dataset, batch_size, shuffle = False)
+
+    total_pos_true = true_dataset.indices
+#-------------------------------------------------------------------------------
+
+
 model = model.cuda()
 # criterion
 criterion = nn.CrossEntropyLoss().cuda()
@@ -225,25 +267,27 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epoch//10, gamma=gamma)
 
 # train
+print("===============================================================================")
 print("start training")
 tic = time.time()
 epoch_loss = np.zeros([2, epoch])
 for e in range(epoch): 
     model.train()
-    train_acc, train_loss, label_t, prediction_t = train_epoch(model, train_loader, criterion, optimizer)
+    train_acc, train_loss, label_t, prediction_t = train_epoch(model, train_loader, criterion, optimizer, e, epoch)
     scheduler.step()
     OA_train, AA_train, Kappa_train, CA_train, CM_train = output_metric(label_t, prediction_t) 
     print("Epoch: {:03d} | train_loss: {:.4f} | train_acc: {:.4f}".format(e+1, train_loss, train_acc))
     epoch_loss[0][e], epoch_loss[1][e] = e+1, train_loss
 
-    if ((e+1) % test_freq == 0) | (e == epoch - 1):         
+    if ((e+1) % test_freq == 0) | (e == epoch - 1):
+        print("===============================================================================")
+        print("start validating")      
         model.eval()
         label_v, prediction_v = valid_epoch(model, test_loader, criterion, optimizer)
         OA_val, AA_val, Kappa_val, CA_val, CM_val = output_metric(label_v, prediction_v)
         if (e != epoch -1):
-            print("===============================================================================")
             print("Epoch: {:03d}  =>  OA: {:.4f} | AA: {:.4f} | Kappa: {:.4f}".format(e+1, OA_val, AA_val, Kappa_val))
-            print("===============================================================================")
+        print("===============================================================================")
 
 toc = time.time()
 print("Running Time: {:.2f}".format(toc-tic))
@@ -266,7 +310,7 @@ prediction = np.zeros((height, width), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
-    elif model_type == "CNN_RNN":
+    elif model_type == "CNN_RNN" or model_type == "ACmix":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
 
 print("end testing")
@@ -288,6 +332,6 @@ else:
 draw_result_visualization(time_folder, epoch_loss)
 if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "CNN":
+elif model_type == "CNN_RNN" or model_type == "ACmix":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
