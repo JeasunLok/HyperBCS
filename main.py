@@ -332,6 +332,6 @@ else:
 draw_result_visualization(time_folder, epoch_loss)
 if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "CNN_RNN" or model_type == "ACmix":
+elif model_type == "CNN_RNN" or model_type == "ACmix_RNN":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
