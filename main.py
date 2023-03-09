@@ -23,9 +23,9 @@ from test import test_epoch
 # setting the parameters
 model_type = "CNN_RNN" # CNN_RNN or Transformer
 Transformer_mode = "CAF" # if Transformer : VIT CAF
-CNN_mode = "CNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
+CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D CNN_FCN RNN_1D
 gpu = 0
-epoch = 500
+epoch = 2000
 test_freq = 500
 batch_size = 128
 patches = 3
