@@ -24,18 +24,18 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "ACmix" # CNN_RNN or Transformer or ACmix
-Transformer_mode = "ViT" # if Transformer : ViT CAF
-CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+model_type = "CNN_RNN" # CNN_RNN or Transformer or ACmix
+Transformer_mode = "CAF" # if Transformer : ViT CAF
+CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 
 ACmix_mode = "2D" # if ACmix : 2D 3D
 
 gpu = 0
-epoch = 300
+epoch = 100
 test_freq = 1000
 batch_size = 64
-patches = 1
-band_patches = 1
+patches = 5
+band_patches = 3
 learning_rate = 5e-4
 weight_decay = 5e-3
 gamma = 0.9
@@ -61,13 +61,11 @@ elif model_type == "CNN_RNN":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
         
 
-
 elif model_type == "ACmix":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data + str(year)
-
 
 
 os.makedirs(time_folder)
@@ -95,6 +93,8 @@ if HSI_data == "IndianPine":
     data = loadmat(r".\\data\\IndianPine.mat")
     train_label = data['TR']
     test_label = data['TE']
+    plt.imsave(time_folder + r"\\train_label.png", train_label, dpi=300)
+    plt.imsave(time_folder + r"\\test_label.png", test_label, dpi=300)
     input = data['input'] #(145,145,200)
 #-------------------------------------------------------------------------------
 
@@ -140,7 +140,7 @@ if model_type == "Transformer":
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
     x_train_band, x_test_band, x_true_band = train_and_test_data(mirror_image, band, total_pos_train, total_pos_test, total_pos_true, patch=patches, band_patch=band_patches)
     y_train, y_test, y_true = train_and_test_label(number_train, number_test, number_true, num_classes)
-
+    print(mirror_image.shape)
     # data processing
     x_train=torch.from_numpy(x_train_band.transpose(0,2,1)).type(torch.FloatTensor) 
     y_train=torch.from_numpy(y_train).type(torch.LongTensor)
@@ -223,7 +223,9 @@ elif model_type == "CNN_RNN":
             num_classes = num_classes + 1,
         )
         patches = 1
-        
+
+    mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
+       
     train_dataset = HSI_Dataset(input_normalize, train_label, True, patches)
     train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
 
@@ -236,6 +238,7 @@ elif model_type == "CNN_RNN":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
+# ACmix mode
 #-------------------------------------------------------------------------------
 elif model_type == "ACmix":
     if ACmix_mode == "2D":
@@ -244,6 +247,8 @@ elif model_type == "ACmix":
             num_classes = num_classes + 1
         )
         patches = 32
+    
+    mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
 
     train_dataset = HSI_Dataset(input_normalize, train_label, True, patches)
     train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
@@ -305,13 +310,24 @@ print("start testing")
 model.eval()
 
 # output classification maps
+padding = patches//2
 pre_u = test_epoch(model, true_loader)
+prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 prediction = np.zeros((height, width), dtype=float)
+print(prediction.shape)
+print(prediction_temp.shape)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
     elif model_type == "CNN_RNN" or model_type == "ACmix":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
+        prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
+# if model_type == "CNN_RNN" or model_type == "ACmix":
+#     for i in range(height):
+#         for j in range(width):
+#             prediction[i][j] = prediction_temp[padding+i][padding+j] 
+# print(padding,height+padding-1,padding,width+padding-1)
+print(prediction.shape)
 
 print("end testing")
 print("===============================================================================")
@@ -332,6 +348,8 @@ else:
 draw_result_visualization(time_folder, epoch_loss)
 if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "CNN_RNN" or model_type == "ACmix_RNN":
+elif model_type == "CNN_RNN" or model_type == "ACmix":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+elif model_type == "ACmix":
+    store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ACmix_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
