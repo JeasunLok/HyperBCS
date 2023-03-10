@@ -24,15 +24,14 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "CNN_RNN" # CNN_RNN or Transformer or ACmix
+model_type = "ACmix" # CNN_RNN or Transformer or ACmix
 Transformer_mode = "CAF" # if Transformer : ViT CAF
 CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
-
 ACmix_mode = "2D" # if ACmix : 2D 3D
 
 gpu = 0
-epoch = 100
-test_freq = 1000
+epoch = 50
+test_freq = 10
 batch_size = 64
 patches = 5
 band_patches = 3
@@ -42,7 +41,7 @@ gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
-HSI_data = "IndianPine" # IndianPine or wetland
+HSI_data = "wetland" # IndianPine or wetland
 year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
@@ -140,7 +139,7 @@ if model_type == "Transformer":
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
     x_train_band, x_test_band, x_true_band = train_and_test_data(mirror_image, band, total_pos_train, total_pos_test, total_pos_true, patch=patches, band_patch=band_patches)
     y_train, y_test, y_true = train_and_test_label(number_train, number_test, number_true, num_classes)
-    print(mirror_image.shape)
+
     # data processing
     x_train=torch.from_numpy(x_train_band.transpose(0,2,1)).type(torch.FloatTensor) 
     y_train=torch.from_numpy(y_train).type(torch.LongTensor)
@@ -224,21 +223,27 @@ elif model_type == "CNN_RNN":
         )
         patches = 1
 
+    # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
-       
-    train_dataset = HSI_Dataset(input_normalize, train_label, True, patches)
+    mirror_train_label = mirror_hsi(height, width, 1, np.expand_dims(train_label, axis=2), patch=patches)
+    mirror_test_label = mirror_hsi(height, width, 1, np.expand_dims(test_label, axis=2), patch=patches)
+
+    mirror_train_label = mirror_train_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+    mirror_test_label = mirror_test_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+
+    train_dataset = HSI_Dataset(mirror_image, mirror_train_label, True, patches)
     train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
 
-    test_dataset = HSI_Dataset(input_normalize, test_label, True, patches)
+    test_dataset = HSI_Dataset(mirror_image, mirror_test_label, True, patches)
     test_loader = Data.DataLoader(test_dataset, batch_size, shuffle = True)
 
-    true_dataset = HSI_Dataset(input_normalize, test_label, False, patches)
+    true_dataset = HSI_Dataset(mirror_image, mirror_test_label, False, patches)
     true_loader = Data.DataLoader(true_dataset, batch_size, shuffle = False)
 
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# ACmix mode
+# ACmix models
 #-------------------------------------------------------------------------------
 elif model_type == "ACmix":
     if ACmix_mode == "2D":
@@ -246,23 +251,30 @@ elif model_type == "ACmix":
             input_channels = band,
             num_classes = num_classes + 1
         )
-        patches = 32
+        patches = 56
     
+    # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
+    mirror_train_label = mirror_hsi(height, width, 1, np.expand_dims(train_label, axis=2), patch=patches)
+    mirror_test_label = mirror_hsi(height, width, 1, np.expand_dims(test_label, axis=2), patch=patches)
 
-    train_dataset = HSI_Dataset(input_normalize, train_label, True, patches)
+    mirror_train_label = mirror_train_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+    mirror_test_label = mirror_test_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+
+    train_dataset = HSI_Dataset(mirror_image, mirror_train_label, True, patches)
     train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
 
-    test_dataset = HSI_Dataset(input_normalize, test_label, True, patches)
+    test_dataset = HSI_Dataset(mirror_image, mirror_test_label, True, patches)
     test_loader = Data.DataLoader(test_dataset, batch_size, shuffle = True)
 
-    true_dataset = HSI_Dataset(input_normalize, test_label, False, patches)
+    true_dataset = HSI_Dataset(mirror_image, mirror_test_label, False, patches)
     true_loader = Data.DataLoader(true_dataset, batch_size, shuffle = False)
 
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-
+# model settings
+#-------------------------------------------------------------------------------
 model = model.cuda()
 # criterion
 criterion = nn.CrossEntropyLoss().cuda()
@@ -270,6 +282,7 @@ criterion = nn.CrossEntropyLoss().cuda()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 # scheduler
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epoch//10, gamma=gamma)
+#-------------------------------------------------------------------------------
 
 # train
 print("===============================================================================")
@@ -310,24 +323,20 @@ print("start testing")
 model.eval()
 
 # output classification maps
-padding = patches//2
+padding = patches // 2
 pre_u = test_epoch(model, true_loader)
-prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 prediction = np.zeros((height, width), dtype=float)
-print(prediction.shape)
-print(prediction_temp.shape)
+prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
     elif model_type == "CNN_RNN" or model_type == "ACmix":
-        prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
         prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
-# if model_type == "CNN_RNN" or model_type == "ACmix":
-#     for i in range(height):
-#         for j in range(width):
-#             prediction[i][j] = prediction_temp[padding+i][padding+j] 
-# print(padding,height+padding-1,padding,width+padding-1)
-print(prediction.shape)
+
+if model_type == "CNN_RNN" or model_type =="ACmix":
+    for i in range(height):
+        for j in range(width):
+            prediction[i,j] = prediction_temp[padding+i,padding+j]
 
 print("end testing")
 print("===============================================================================")
