@@ -2,10 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import torch
-import torch.nn as nn
-
-
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -38,7 +34,6 @@ def init_rate_half(tensor):
 def init_rate_0(tensor):
     if tensor is not None:
         tensor.data.fill_(0.)
-
 
 class ACmix(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_att=7, head=4, kernel_conv=3, stride=1, dilation=1):
@@ -326,7 +321,7 @@ def _resnet(block, layers, input_channels, num_classes, **kwargs):
     return model
 
 
-def ACmix_ResNet(input_channels, num_classes, layers=[3,4,6,3], **kwargs):
+def ACmix_ResNet(input_channels, num_classes, layers=[1,1,6,3], **kwargs):
     return _resnet(Bottleneck, layers, input_channels, num_classes, **kwargs)
 
 
