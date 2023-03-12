@@ -333,3 +333,44 @@ class RNN_1D(nn.Module):
         x = self.tanh(x)
         x = self.fc(x)
         return x
+
+if __name__ == '__main__':
+    band = 32
+    num_classes = 999
+    model = CNN_3D_Classifer_1D(
+            input_channels = band,
+            num_classes = num_classes + 1,
+            patch_size = 5,
+            dilation =  1
+        )
+    model = RNN_1D(
+            input_channels = band,
+            num_classes = num_classes + 1,
+        )
+    model = CNN_3D(
+            input_channels = band,
+            num_classes = num_classes + 1,
+            patch_size = 5,
+            n_planes =  2
+        )
+    # model = CNN_2D(
+    #         input_channels = band,
+    #         num_classes = num_classes + 1,
+    #         patch_size = 64
+    #     )
+    # model = CNN_1D(
+    #         input_channels = band,
+    #         num_classes = num_classes + 1
+    #     )
+    # model = MLP_4(
+    #         input_channels = band,
+    #         num_classes = num_classes + 1,
+    #         dropout = True
+    #     )
+    model = model.cuda()
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'{total_params:,} total parameters.')
+    total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'{total_trainable_params:,} training parameters.')
+    input = torch.randn([2,1,32,5,5]).cuda()
+    print(model(input).shape)
