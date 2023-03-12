@@ -11,8 +11,7 @@ from scipy.io import loadmat,savemat
 
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
-
-from models.ACmix_2D import ACmix_ResNet
+from models.HyperMAC_2D import ACmix_ResNet
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -24,16 +23,16 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "ACmix" # CNN_RNN or Transformer or ACmix
+model_type = "CNN_RNN" # CNN_RNN or Transformer or ACmix
 Transformer_mode = "CAF" # if Transformer : ViT CAF
 CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 ACmix_mode = "2D" # if ACmix : 2D 3D
 
 gpu = 0
-epoch = 50
-test_freq = 10
-batch_size = 64
-patches = 5
+epoch = 100
+test_freq = 500
+batch_size = 128
+patches = 3
 band_patches = 3
 learning_rate = 5e-4
 weight_decay = 5e-3
@@ -58,14 +57,12 @@ elif model_type == "CNN_RNN":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
-        
 
 elif model_type == "ACmix":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data + str(year)
-
 
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
@@ -251,7 +248,7 @@ elif model_type == "ACmix":
             input_channels = band,
             num_classes = num_classes + 1
         )
-        patches = 56
+        patches = 8
     
     # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
@@ -341,6 +338,7 @@ if model_type == "CNN_RNN" or model_type =="ACmix":
 print("end testing")
 print("===============================================================================")
 
+# result show
 plt.subplot(1,1,1)
 if HSI_data == "wetland":
     plt.imshow(prediction, cmap=save_colormap_2)
@@ -349,15 +347,17 @@ else:
 plt.xticks([])
 plt.yticks([])
 plt.show()
-if HSI_data == "wetland":
-    plt.imsave(time_folder + r"\\prediction_result.png", prediction, cmap=save_colormap_2, dpi=300)
-else: 
-    plt.imsave(time_folder + r"\\prediction_result.png", prediction, dpi=300)
 
+# image and result save
+if HSI_data == "wetland":
+    plt.imsave(time_folder + r"\\image.png", input_normalize[:,:,[14,7,2]], dpi=300)
+    plt.imsave(time_folder + r"\\prediction.png", prediction, cmap=save_colormap_2, dpi=300)
+else: 
+    plt.imsave(time_folder + r"\\prediction.png", prediction, dpi=300)
 draw_result_visualization(time_folder, epoch_loss)
 if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "CNN_RNN" or model_type == "ACmix":
+elif model_type == "CNN_RNN":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 elif model_type == "ACmix":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ACmix_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
