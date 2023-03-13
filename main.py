@@ -12,6 +12,7 @@ from scipy.io import loadmat,savemat
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
 from models.HyperMAC_2D import ACmix_ResNet
+from models.change_model import ACmix_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -23,10 +24,10 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "CNN_RNN" # CNN_RNN or Transformer or ACmix
+model_type = "ACmix" # CNN_RNN or Transformer or ACmix
 Transformer_mode = "CAF" # if Transformer : ViT CAF
 CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
-ACmix_mode = "2D" # if ACmix : 2D 3D
+ACmix_mode = "3D" # if ACmix : 2D 3D
 
 gpu = 0
 epoch = 100
@@ -250,6 +251,13 @@ elif model_type == "ACmix":
         )
         patches = 8
     
+    if ACmix_mode == "3D":
+        model = ACmix_3D(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 8
+
     # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
     mirror_train_label = mirror_hsi(height, width, 1, np.expand_dims(train_label, axis=2), patch=patches)
