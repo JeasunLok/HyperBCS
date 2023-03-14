@@ -106,30 +106,30 @@ class ACmix(nn.Module):
 
     def forward(self, x):
 
-        print("xshape")
-        print(x.shape)
+        # print("xshape")
+        # print(x.shape)
 
         q, k, v = self.conv1_3D(x), self.conv2_3D(x), self.conv3_3D(x)
         scaling = float(self.head_dim) ** -0.5
         b, l, c, h, w = q.shape
 
-        print("qshape")
-        print(q.shape)
+        # print("qshape")
+        # print(q.shape)
 
         h_out, w_out = h//self.stride, w//self.stride
 
         # ## positional encoding
         pe = self.conv_p_3D(position_3D(c, h, w, x.is_cuda))
 
-        print("peshape")
-        print(pe.shape)
+        # print("peshape")
+        # print(pe.shape)
 
         q_att = q.view(b*self.head, self.head_dim, c, h, w) * scaling
         k_att = k.view(b*self.head, self.head_dim, c, h, w)
         v_att = v.view(b*self.head, self.head_dim, c, h, w)
 
-        print("q_attshape")
-        print(q_att.shape)
+        # print("q_attshape")
+        # print(q_att.shape)
 
         if self.stride > 1:
             q_att = stride(q_att, self.stride)
@@ -137,20 +137,20 @@ class ACmix(nn.Module):
         else:
             q_pe = pe
 
-        print("qpeshape")
-        print(q_pe.shape)
+        # print("qpeshape")
+        # print(q_pe.shape)
 
 
 
         unfold_temp = self.pad_att_3D(k_att)
-        print(unfold_temp.shape)
+        # print(unfold_temp.shape)
         # print(unfold_temp[:,:,1,:,:].shape)
         unfold_k = torch.tensor([]).cuda()
         for i in range (unfold_temp.shape[2]):
             unfold_k_temp = self.unfold(unfold_temp[:,:,i,:,:]).unsqueeze(0)
             # print(unfold_k_temp.shape)
             unfold_k = torch.concat([unfold_k, unfold_k_temp], 0)
-        print(unfold_k.shape)
+        # print(unfold_k.shape)
         # unfold_k = self.unfold(self.pad_att_3D(k_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, h_out, w_out) # b*head, head_dim, k_att^2, h_out, w_out
 
         unfold_temp = self.pad_att_3D(pe)
@@ -161,7 +161,7 @@ class ACmix(nn.Module):
             unfold_rpe_temp = self.unfold(unfold_temp[:,:,i,:,:]).unsqueeze(0)
             # print(unfold_rpe_temp.shape)
             unfold_rpe = torch.concat([unfold_rpe, unfold_rpe_temp], 0)
-        print(unfold_rpe.shape)
+        # print(unfold_rpe.shape)
 
         c_out = unfold_temp.shape[2]//self.stride
 
@@ -170,20 +170,20 @@ class ACmix(nn.Module):
         # unfold_rpe = self.unfold(self.pad_att_3D(pe))
         # unfold_rpe = self.unfold(self.pad_att(pe)).view(1, self.head_dim, self.kernel_att*self.kernel_att, h_out, w_out) # 1, head_dim, k_att^2, h_out, w_out
         
-        print("unfold_kshape")
-        print(unfold_k.shape)
-        print("unfold_rpeshape")
-        print(unfold_rpe.shape)
+        # print("unfold_kshape")
+        # print(unfold_k.shape)
+        # print("unfold_rpeshape")
+        # print(unfold_rpe.shape)
 
         att = (q_att.unsqueeze(2)*(unfold_k + q_pe.unsqueeze(2) - unfold_rpe)).sum(1) # (b*head, head_dim, 1, h_out, w_out) * (b*head, head_dim, k_att^2, h_out, w_out) -> (b*head, k_att^2, h_out, w_out)
         
-        print("attshape")
-        print(att.shape)
+        # print("attshape")
+        # print(att.shape)
 
         att = self.softmax(att)
 
-        print("att_softmaxshape")
-        print(att.shape)
+        # print("att_softmaxshape")
+        # print(att.shape)
 
         unfold_temp = self.pad_att_3D(v_att)
         # print(unfold_temp[:,:,1,:,:].shape)
@@ -195,32 +195,32 @@ class ACmix(nn.Module):
 
         out_att = unfold_v.view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, c_out, h_out, w_out)
         
-        print("out_attshape")
-        print(out_att.shape)
+        # print("out_attshape")
+        # print(out_att.shape)
 
         out_att = (att.unsqueeze(1) * out_att).sum(2).view(b, self.out_planes, c_out, h_out, w_out)
 
-        print("out_attshape_last")
-        print(out_att.shape)
+        # print("out_attshape_last")
+        # print(out_att.shape)
 
-        print("conv_before shape")
-        print(torch.cat([q.view(b, self.head, self.head_dim, c, h*w), k.view(b, self.head, self.head_dim, c, h*w), v.view(b, self.head, self.head_dim, c, h*w)], 1).shape)
+        # print("conv_before shape")
+        # print(torch.cat([q.view(b, self.head, self.head_dim, c, h*w), k.view(b, self.head, self.head_dim, c, h*w), v.view(b, self.head, self.head_dim, c, h*w)], 1).shape)
 
         f_all = self.fc_3D(torch.cat([q.view(b, self.head, self.head_dim, c, h*w), k.view(b, self.head, self.head_dim, c, h*w), v.view(b, self.head, self.head_dim, c, h*w)], 1))
         
-        print("f_allshape")
-        print(f_all.shape)
+        # print("f_allshape")
+        # print(f_all.shape)
         
         f_conv = f_all.permute(0, 2, 1, 3, 4).reshape(x.shape[0], -1, x.shape[-3], x.shape[-2], x.shape[-1])
         # print(f_all.permute(0, 2, 1, 3).shape)
         # print(x.shape[0],x.shape[-2],x.shape[-1])
-        print("f_convshape")
-        print(f_conv.shape)
+        # print("f_convshape")
+        # print(f_conv.shape)
 
         out_conv = self.dep_conv_3D(f_conv)
 
-        print("out_convshape")
-        print(out_conv.shape)
+        # print("out_convshape")
+        # print(out_conv.shape)
 
         # print("result")
         # print((self.rate1 * out_att + self.rate2 * out_conv).shape)
@@ -253,7 +253,7 @@ class Bottleneck(nn.Module):
         self.bn2 = norm_layer(width)
 
         self.conv3 = conv1x1(width, planes * self.expansion)
-        self.conv3_2D = nn.Conv3d(width, planes * self.expansion, kernel_size=(1, 1, 1))
+        self.conv3_3D = nn.Conv3d(width, planes * self.expansion, kernel_size=(1, 1, 1))
 
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
@@ -271,11 +271,11 @@ class Bottleneck(nn.Module):
         out = self.bn2(out)
         out = self.relu(out)
 
-        out = self.conv3_2D(out)
+        out = self.conv3_3D(out)
         out = self.bn3(out)
-        print("!!!!!!")
-        print(out.shape)
-        print(identity.shape)
+        # print("!!!!!!")
+        # print(out.shape)
+        # print(identity.shape)
         if self.downsample is not None:
            identity = self.downsample(x)
 
@@ -372,33 +372,33 @@ class ACmix_3D(nn.Module):
 
     def forward(self, x):
         # See note [TorchScript super()]
-        print("1")
-        print(x.shape)
+        # print("1")
+        # print(x.shape)
         
         # x = x.unsqueeze(1)
-        print("2")
-        print(x.shape)
+        # print("2")
+        # print(x.shape)
 
         x = self.conv1_3D(x)
-        print("3")
-        print(x.shape)
+        # print("3")
+        # print(x.shape)
 
         x = self.bn1_3D(x)
-        print("4")
-        print(x.shape)
+        # print("4")
+        # print(x.shape)
 
         x = self.relu_3D(x)
-        print("5")
-        print(x.shape)
+        # print("5")
+        # print(x.shape)
 
         x = self.maxpool_3D(x)
-        print("6")
-        print(x.shape)
+        # print("6")
+        # print(x.shape)
 
         # print("layer1")
         x = self.layer1(x)
-        print("7")
-        print(x.shape)
+        # print("7")
+        # print(x.shape)
         # print("layer2")
         # x = self.layer2(x)
         # print("layer3")
@@ -407,16 +407,16 @@ class ACmix_3D(nn.Module):
         # x = self.layer4(x)
 
         x = self.avgpool_3D(x)
-        print("8")
-        print(x.shape)
+        # print("8")
+        # print(x.shape)
 
         x = torch.flatten(x, 1)
-        print("9")
-        print(x.shape)
+        # print("9")
+        # print(x.shape)
         
         x = self.fc(x)
-        print("10")
-        print(x.shape)
+        # print("10")
+        # print(x.shape)
 
         return x
 
