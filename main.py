@@ -35,8 +35,8 @@ test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-4
-weight_decay = 5e-3
+learning_rate = 5e-3
+weight_decay = 5e-2
 gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
