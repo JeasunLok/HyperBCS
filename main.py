@@ -12,7 +12,7 @@ from scipy.io import loadmat,savemat
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
 from models.HyperMAC_2D import ACmix_ResNet
-from models.change_model import ACmix_3D
+from models.change_model_copy import ACmix_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -30,9 +30,9 @@ CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1
 ACmix_mode = "3D" # if ACmix : 2D 3D
 
 gpu = 0
-epoch = 100
+epoch = 50
 test_freq = 500
-batch_size = 128
+batch_size = 32
 patches = 3
 band_patches = 3
 learning_rate = 5e-4
@@ -41,7 +41,7 @@ gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
-HSI_data = "wetland" # IndianPine or wetland
+HSI_data = "IndianPine" # IndianPine or wetland
 year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
@@ -256,7 +256,7 @@ elif model_type == "ACmix":
             input_channels = band,
             num_classes = num_classes + 1
         )
-        patches = 8
+        patches = 9
 
     # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
