@@ -11,8 +11,8 @@ from scipy.io import loadmat,savemat
 
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
-from models.HyperMAC_2D import ACmix_ResNet
-from models.change_model_copy import ACmix_3D
+from models.HyperMAC_2D import HyperMAC_2D
+from models.HyperMAC_3D import HyperMAC_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -245,14 +245,14 @@ elif model_type == "CNN_RNN":
 #-------------------------------------------------------------------------------
 elif model_type == "ACmix":
     if ACmix_mode == "2D":
-        model = ACmix_ResNet(
+        model = HyperMAC_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
     if ACmix_mode == "3D":
-        model = ACmix_3D(
+        model = HyperMAC_3D(
             input_channels = band,
             num_classes = num_classes + 1
         )
