@@ -24,19 +24,19 @@ from test import test_epoch
 
 #-------------------------------------------------------------------------------
 # setting the parameters
-model_type = "ACmix" # CNN_RNN or Transformer or ACmix
+model_type = "HyperMAC" # CNN_RNN or Transformer or HyperMAC
 Transformer_mode = "CAF" # if Transformer : ViT CAF
 CNN_mode = "CNN_3D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
-ACmix_mode = "3D" # if ACmix : 2D 3D
+HyperMAC_mode = "2D" # if HyperMAC : 2D 3D
 
 gpu = 0
-epoch = 50
+epoch = 120 #HyperMAC 3D =>40-50 HyperMAC 2D =>120 others =>100-200
 test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-2 #ACmix 3D =>5e-2 others =>5e-4
-weight_decay = 0 # ACmix 3D =>0 others =>5e-3
+learning_rate = 5e-4 #HyperMAC 3D =>5e-2 others =>5e-4
+weight_decay = 5e-3 # HyperMAC 3D =>0 others =>5e-3
 gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
@@ -59,11 +59,11 @@ elif model_type == "CNN_RNN":
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
 
-elif model_type == "ACmix":
+elif model_type == "HyperMAC":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ACmix_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data + str(year)
 
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ elif HSI_data == "wetland":
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
 
-    if model_type == "CNN_RNN" or model_type == "ACmix":
+    if model_type == "CNN_RNN" or model_type == "HyperMAC":
         save_colormap_2 = save_colormap_1
 
     elif model_type == "Transformer":
@@ -241,17 +241,17 @@ elif model_type == "CNN_RNN":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# ACmix models
+# HyperMAC models
 #-------------------------------------------------------------------------------
-elif model_type == "ACmix":
-    if ACmix_mode == "2D":
+elif model_type == "HyperMAC":
+    if HyperMAC_mode == "2D":
         model = HyperMAC_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
-    if ACmix_mode == "3D":
+    if HyperMAC_mode == "3D":
         model = HyperMAC_3D(
             input_channels = band,
             num_classes = num_classes + 1
@@ -335,10 +335,10 @@ prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
-    elif model_type == "CNN_RNN" or model_type == "ACmix":
+    elif model_type == "CNN_RNN" or model_type == "HyperMAC":
         prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
 
-if model_type == "CNN_RNN" or model_type =="ACmix":
+if model_type == "CNN_RNN" or model_type =="HyperMAC":
     for i in range(height):
         for j in range(width):
             prediction[i,j] = prediction_temp[padding+i,padding+j]
@@ -367,8 +367,8 @@ if model_type == "Transformer":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 elif model_type == "CNN_RNN":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-elif model_type == "ACmix":
-    store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ACmix_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+elif model_type == "HyperMAC":
+    store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 # save model and its parameters 
 torch.save(model, time_folder + r"\\model.pkl")
 torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
