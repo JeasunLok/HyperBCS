@@ -35,13 +35,13 @@ test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-3
-weight_decay = 5e-2
+learning_rate = 5e-2 #ACmix 3D =>5e-2 others =>5e-4
+weight_decay = 0 # ACmix 3D =>0 others =>5e-3
 gamma = 0.9
 
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
-HSI_data = "IndianPine" # IndianPine or wetland
+HSI_data = "wetland" # IndianPine or wetland
 year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
@@ -256,7 +256,7 @@ elif model_type == "ACmix":
             input_channels = band,
             num_classes = num_classes + 1
         )
-        patches = 9
+        patches = 8
 
     # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
@@ -369,4 +369,8 @@ elif model_type == "CNN_RNN":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
 elif model_type == "ACmix":
     store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ACmix_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+# save model and its parameters 
+torch.save(model, time_folder + r"\\model.pkl")
+torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
+# save the predict image
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
