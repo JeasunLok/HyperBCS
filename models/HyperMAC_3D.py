@@ -4,17 +4,6 @@ import torch.nn.functional as F
 from torchsummary import summary
 from thop import profile
 
-# class model(nn.Module):
-
-# 3x3 convolutional module
-def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
-
-# 1x1 convolutional module
-def conv1x1(in_planes, out_planes, stride=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
-
 # transformer module positional embeddings fill with [-1,1]
 def position_3D(C, H, W, is_cuda=True):
     if is_cuda:
@@ -176,10 +165,10 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ACmix_3D(nn.Module):
+class HyperMAC_3D(nn.Module):
     def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=1000,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None):
-        super(ACmix_3D, self).__init__()
+        super(HyperMAC_3D, self).__init__()
 
         self.inplanes = 64
         self.dilation = 1
@@ -266,7 +255,7 @@ class ACmix_3D(nn.Module):
 
 
 if __name__ == '__main__':
-    model = ACmix_3D().cuda()
+    model = HyperMAC_3D().cuda()
     input = torch.randn([2,1,32,8,8]).cuda()
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
