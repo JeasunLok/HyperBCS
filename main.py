@@ -28,14 +28,15 @@ from test import test_epoch
 # setting the parameters
 # model mode
 mode = "train" # train or test
-model_path = "logs\\2023-03-19-19-53-01-HyperMAC_MultiScale-2D-wetland2017\\model_state_dict.pkl"
+pretrained = False # pretrained or not
+model_path = r"logs\2023-03-22-03-35-39-HyperMAC_MultiScale-3D-wetland2017\model_state_dict.pkl"
 
 # model settings
-model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale
+model_type = "CNN_RNN" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale
 Transformer_mode = "ViT" # if Transformer : ViT CAF
-CNN_mode = "MLP_4" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 HyperMAC_mode = "3D" # if HyperMAC : 2D 3D
-HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
+HyperMAC_MultiScale_mode = "2D" # if HyperMAC_MultiScale : 2D 3D
 
 # training settings
 gpu = 0
@@ -45,8 +46,8 @@ test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-5
-#HyperMAC 3D =>5e-2 others =>5e-4
+learning_rate = 5e-3
+#HyperMAC 3D =>5e-2/5e-3 others =>5e-4
 weight_decay = 0
 # HyperMAC 3D =>0 others =>5e-3
 gamma = 0.9
@@ -55,7 +56,7 @@ gamma = 0.9
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-year = 2015 # if wetland
+year = 2017 # if wetland
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
@@ -342,11 +343,15 @@ criterion = nn.CrossEntropyLoss().cuda()
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 # scheduler
-# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epoch//10, gamma=gamma)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epoch//10, eta_min=5e-7)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=epoch//10, gamma=gamma)
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epoch//10, eta_min=5e-4)
 
 #-------------------------------------------------------------------------------
 if mode == "train":
+    # if pretrained
+    if pretrained:
+        model.load_state_dict(torch.load(model_path))
+        print("load model path : " + model_path)
     # train
     print("===============================================================================")
     print("start training")
@@ -387,6 +392,20 @@ elif mode == "test":
     print("load model path : " + model_path)
     print("===============================================================================")
 
+if mode == "train":
+    draw_result_visualization(time_folder, epoch_loss)
+    if model_type == "Transformer":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "CNN_RNN":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "HyperMAC":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "HyperMAC_MultiScale":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    # save model and its parameters 
+    torch.save(model, time_folder + r"\\model.pkl")
+    torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
+
 print("start testing")
 model.eval()
 
@@ -426,18 +445,5 @@ if HSI_data == "wetland":
 else: 
     plt.imsave(time_folder + r"\\prediction.png", prediction, dpi=300)
 
-if mode == "train":
-    draw_result_visualization(time_folder, epoch_loss)
-    if model_type == "Transformer":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "CNN_RNN":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "HyperMAC":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "HyperMAC_MultiScale":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    # save model and its parameters 
-    torch.save(model, time_folder + r"\\model.pkl")
-    torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
 # save the predict image
 savemat(time_folder + r"\\prediction_label.mat", {"prediction":prediction, "label":all_label})
