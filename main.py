@@ -13,8 +13,10 @@ from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
 from models.HyperMAC_2D import HyperMAC_2D
 from models.HyperMAC_3D import HyperMAC_3D
-from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
-from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
+# from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
+from models.HyperMAC_MultiScale_2D_FCfront import HyperMAC_2D_MultiScale
+# from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
+from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -32,11 +34,11 @@ pretrained = False # pretrained or not
 model_path = r"logs\2023-03-22-03-35-39-HyperMAC_MultiScale-3D-wetland2017\model_state_dict.pkl"
 
 # model settings
-model_type = "CNN_RNN" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale
+model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale
 Transformer_mode = "ViT" # if Transformer : ViT CAF
 CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 HyperMAC_mode = "3D" # if HyperMAC : 2D 3D
-HyperMAC_MultiScale_mode = "2D" # if HyperMAC_MultiScale : 2D 3D
+HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
 
 # training settings
 gpu = 0
@@ -56,7 +58,7 @@ gamma = 0.9
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-year = 2017 # if wetland
+year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
