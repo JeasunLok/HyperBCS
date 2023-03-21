@@ -183,6 +183,7 @@ class HyperMAC_3D_MultiScale(nn.Module):
         self.base_width = width_per_group
 
         self.conv1_3D = nn.Conv3d(1, self.inplanes, kernel_size=(7, 7, 7), stride=(1, 1, 1), padding=(3, 3, 3), bias=False)
+        # self.conv1_3D_multiscale = nn.Conv3d(1, self.inplanes, kernel_size=(7, 7, 7), stride=(2, 1, 1), padding=(3, 3, 3), bias=False)
 
         self.bn1_3D = nn.BatchNorm3d(self.inplanes)
 
@@ -260,22 +261,22 @@ class HyperMAC_3D_MultiScale(nn.Module):
         x = self.maxpool_3D(x)
         x_multiscale = self.maxpool_3D_multiscale(x_multiscale)
  
-        x = self.layer1(x)
-        x_multiscale = self.layer1(x_multiscale)
+        x = self.layer1(x + x_multiscale)
+        # x_multiscale = self.layer1(x_multiscale)
         # x = self.layer2(x)
 
         x = self.avgpool_3D(x)
-        x_multiscale = self.avgpool_3D(x_multiscale)
+        # x_multiscale = self.avgpool_3D(x_multiscale)
 
         x = torch.flatten(x, 1)
-        x_multiscale = torch.flatten(x_multiscale, 1)
+        # x_multiscale = torch.flatten(x_multiscale, 1)
 
         x = self.fc(x)
-        x_multiscale = self.fc(x_multiscale)
+        # x_multiscale = self.fc(x_multiscale)
 
-        output_x = self.scale1_rate * x + self.scale2_rate * x_multiscale
+        # output_x = self.scale1_rate * x + self.scale2_rate * x_multiscale
 
-        return output_x
+        return x
 
 
 if __name__ == '__main__':
