@@ -6,9 +6,9 @@ from thop import profile
 
 def position_1D(W, is_cuda=True):
     if is_cuda:
-        loc_w = torch.linspace(-1.0, 1.0, W).cuda().unsqueeze(0)
+        loc_w = torch.linspace(-1.0, 1.0, W).cuda()
     else:
-        loc_w = torch.linspace(-1.0, 1.0, W).unsqueeze(0)
+        loc_w = torch.linspace(-1.0, 1.0, W)
     loc = torch.cat([loc_w.unsqueeze(0)], 0).unsqueeze(0)
     return loc
 
@@ -42,14 +42,14 @@ class ACmix(nn.Module):
         self.conv1 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
         self.conv2 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
         self.conv3 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
-        self.conv_p = nn.Conv1d(2, self.head_dim, kernel_size=1)
+        self.conv_p = nn.Conv1d(1, self.head_dim, kernel_size=1)
 
         self.padding_att = (self.dilation * (self.kernel_att - 1) + 1) // 2
-        self.pad_att = torch.nn.ReflectionPad1d(self.padding_att)
+        self.pad_att = torch.nn.ReflectionPad2d(self.padding_att)
         self.unfold = nn.Unfold(kernel_size=self.kernel_att, padding=0, stride=self.stride)
         self.softmax = torch.nn.Softmax(dim=1)
 
-        self.fc = nn.Conv1d(3*self.head, self.kernel_conv * self.kernel_conv, kernel_size=1, bias=False)
+        self.fc = nn.Conv1d(3*self.head*self.head_dim, self.kernel_conv * self.kernel_conv * self.head_dim, kernel_size=1, bias=False)
         self.dep_conv = nn.Conv1d(self.kernel_conv * self.kernel_conv * self.head_dim, out_planes, kernel_size=self.kernel_conv, bias=True, groups=self.head_dim, padding=1, stride=stride)
 
         self.reset_parameters()
@@ -57,11 +57,7 @@ class ACmix(nn.Module):
     def reset_parameters(self):
         init_rate_half(self.rate1)
         init_rate_half(self.rate2)
-        kernel = torch.zeros(self.kernel_conv * self.kernel_conv, self.kernel_conv, self.kernel_conv)
-        for i in range(self.kernel_conv * self.kernel_conv):
-            kernel[i, i//self.kernel_conv, i%self.kernel_conv] = 1.
-        kernel = kernel.squeeze(0).repeat(self.out_planes, 1, 1, 1)
-        self.dep_conv.weight = nn.Parameter(data=kernel, requires_grad=True)
+        nn.init.kaiming_normal_(self.dep_conv.weight, mode='fan_out', nonlinearity='relu')
         self.dep_conv.bias = init_rate_0(self.dep_conv.bias)
 
     def forward(self, x):
@@ -101,11 +97,10 @@ class ACmix(nn.Module):
 
         # print("qpeshape")
         # print(q_pe.shape)
-
-        unfold_k = self.unfold(self.pad_att(k_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, w_out) # b*head, head_dim, k_att^2, h_out, w_out
-        unfold_rpe = self.unfold(self.pad_att(pe)).view(1, self.head_dim, self.kernel_att*self.kernel_att, w_out) # 1, head_dim, k_att^2, h_out, w_out
+        unfold_k = self.unfold(self.pad_att(k_att).squeeze(dim=-1)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, w_out) # b*head, head_dim, k_att^2, h_out, w_out
+        unfold_rpe = self.unfold(self.pad_att(pe).squeeze(dim=-1)).view(1, self.head_dim, self.kernel_att*self.kernel_att, w_out) # 1, head_dim, k_att^2, h_out, w_out
         
-        # print("unfold_kshape")
+        # # print("unfold_kshape")
         # print(unfold_k.shape)
         # print("unfold_rpeshape")
         # print(unfold_rpe.shape)
@@ -134,7 +129,7 @@ class ACmix(nn.Module):
         # print("conv_before shape")
         # print(torch.cat([q.view(b, self.head, self.head_dim, h*w), k.view(b, self.head, self.head_dim, h*w), v.view(b, self.head, self.head_dim, h*w)], 1).shape)
 
-        f_all = self.fc(torch.cat([q.view(b, self.head, self.head_dim, w), k.view(b, self.head, self.head_dim, w), v.view(b, self.head, self.head_dim, w)], 1))
+        f_all = self.fc(torch.cat([q.view(b, self.head*self.head_dim, w), k.view(b, self.head*self.head_dim, w), v.view(b, self.head*self.head_dim, w)], 1))
         
         # print("f_allshape")
         # print(f_all.shape)
@@ -174,7 +169,7 @@ class Bottleneck(nn.Module):
         self.bn1 = norm_layer(width)
         self.conv2 = ACmix(width, width, k_att, head, k_conv, stride=stride, dilation=dilation)
         self.bn2 = norm_layer(width)
-        self.conv3 = nn.Conv1d(inplanes, width, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv1d(inplanes, planes * self.expansion, kernel_size=3, padding=1)
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -280,9 +275,9 @@ class HyperMAC_1D(nn.Module):
         # print("1")
         # print(x.shape)
         
-        x = x.squeeze(dim=-1).squeeze(dim=-1)
+        x = x.unsqueeze(dim=1)
         # print("2")
-        print(x.shape)
+        # print(x.shape)
 
         x = self.conv1(x)
         # print("3")
@@ -338,7 +333,7 @@ class HyperMAC_1D(nn.Module):
 
 if __name__ == '__main__':
     model = HyperMAC_1D().cuda()
-    input = torch.randn([2,1,32,1,1]).cuda()
+    input = torch.randn([2,32]).cuda()
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -350,4 +345,4 @@ if __name__ == '__main__':
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params
     # --------------------------------------------------#
-    summary(model, input_size=(1,32,1,1), batch_size=-1)
+    summary(model, input_size=(32,), batch_size=-1)
