@@ -19,8 +19,6 @@ class HSI_Dataset(torch.utils.data.Dataset):
         super(HSI_Dataset, self).__init__()
         self.data = data
         self.label = label
-        # self.name = hyperparams["dataset"]
-        # self.patch_size = hyperparams["patch_size"]
 
         # self.ignored_labels = set(hyperparams["ignored_labels"])
         # self.flip_augmentation = hyperparams["flip_augmentation"]
@@ -28,7 +26,7 @@ class HSI_Dataset(torch.utils.data.Dataset):
         # self.mixture_augmentation = hyperparams["mixture_augmentation"]
 
         # self.center_pixel = hyperparams["center_pixel"]
-        # supervision = hyperparams["supervision"]
+
         self.patch_size = patch_size
 
         mask = np.ones_like(label)

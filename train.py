@@ -1,15 +1,17 @@
 import numpy as np
+from tqdm import tqdm
 from utils.utils import AverageMeter
 from utils.metrics import accuracy
 
 #-------------------------------------------------------------------------------
 # train model
-def train_epoch(model, train_loader, criterion, optimizer):
+def train_epoch(model, train_loader, criterion, optimizer, e, epoch):
     loss_show = AverageMeter()
     acc = AverageMeter()
     label = np.array([])
     prediction = np.array([])
-    for batch_idx, (batch_data, batch_label) in enumerate(train_loader):
+    loop = tqdm(enumerate(train_loader), total = len(train_loader))
+    for batch_idx, (batch_data, batch_label) in loop:
         batch_data = batch_data.cuda()
         batch_label = batch_label.cuda()   
 
@@ -29,6 +31,10 @@ def train_epoch(model, train_loader, criterion, optimizer):
         label = np.append(label, l.data.cpu().numpy())
         prediction = np.append(prediction, p.data.cpu().numpy())
 
+        loop.set_description(f'Train Epoch [{e+1}/{epoch}]')
+        loop.set_postfix({"train_loss":loss_show.average.item(),
+                          "train_accuracy": acc.average.item()})
+
     return acc.average, loss_show.average, label, prediction
 #-------------------------------------------------------------------------------
 
@@ -38,7 +44,8 @@ def valid_epoch(model, valid_loader, criterion, optimizer):
     acc = AverageMeter()
     label = np.array([])
     prediction = np.array([])
-    for batch_idx, (batch_data, batch_label) in enumerate(valid_loader):
+    loop = tqdm(enumerate(valid_loader), total = len(valid_loader))
+    for batch_idx, (batch_data, batch_label) in loop:
         batch_data = batch_data.cuda()
         batch_label = batch_label.cuda()   
 
@@ -54,6 +61,10 @@ def valid_epoch(model, valid_loader, criterion, optimizer):
         acc.update(acc_batch[0].data, n)
         label = np.append(label, l.data.cpu().numpy())
         prediction = np.append(prediction, p.data.cpu().numpy())
+
+        loop.set_description(f'Val Epoch')
+        loop.set_postfix({"val_loss":loss_show.average.item(),
+                          "val_accuracy": acc.average.item()})
         
     return label, prediction
 #-------------------------------------------------------------------------------
