@@ -95,77 +95,48 @@ class CNN_2D(nn.Module):
     """
     CNN_2D model
     """
-
-    def weight_init(m):
-        if isinstance(m, (nn.Linear, nn.Conv3d)):
-            init.kaiming_normal_(m.weight)
-            init.zeros_(m.bias)
-
-    def __init__(self, input_channels, num_classes, patch_size=64):
+    def __init__(self, input_channels, num_classes, patch_size=8):
         super(CNN_2D, self).__init__()
-        self.input_channels = input_channels
-        self.patch_size = patch_size
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(
+                in_channels = input_channels,
+                out_channels = 32,
+                kernel_size = 3,
+                stride = 2,
+                padding = 1,
+            ),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(32, 64, 3, 1, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            # nn.MaxPool2d(2),
+            # nn.Dropout(0.5)
 
-        # An input image of size 263x263 pixels is fed to conv1
-        # with 96 kernels of size 6x6x96 with a stride of 2 pixels
-        self.conv1 = nn.Conv3d(1, 96, (input_channels, 6, 6), stride=(1, 2, 2))
-        self.conv1_bn = nn.BatchNorm3d(96)
-        self.pool1 = nn.MaxPool3d((1, 2, 2))
-        #  256 kernels of size 3x3x256 with a stride of 2 pixels
-        self.conv2 = nn.Conv3d(1, 256, (96, 3, 3), stride=(1, 2, 2))
-        self.conv2_bn = nn.BatchNorm3d(256)
-        self.pool2 = nn.MaxPool3d((1, 2, 2))
-        # 512 kernels of size 3x3x512 with a stride of 1 pixel
-        self.conv3 = nn.Conv3d(1, 512, (256, 3, 3), stride=(1, 1, 1))
-        # Considering those large kernel values, I assume they actually merge the
-        # 3D tensors at each step
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(64, 128, 3, 1, 1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.AdaptiveMaxPool2d(1),
+            # nn.Dropout(0.5)
+        )
 
-        self.features_size = self._get_final_flattened_size()
-
-        # The fc1 has 1024 outputs, where dropout was applied after
-        # fc1 with a rate of 0.5
-        self.fc1 = nn.Linear(self.features_size, 1024)
-        self.dropout = nn.Dropout(p=0.5)
-        self.fc2 = nn.Linear(1024, num_classes)
-
-        # self.apply(self.weight_init)
-
-    def _get_final_flattened_size(self):
-        with torch.no_grad():
-            x = torch.zeros(
-                (1, 1, self.input_channels, self.patch_size, self.patch_size)
-            )
-            x = F.relu(self.conv1_bn(self.conv1(x)))
-            x = self.pool1(x)
-            # print(x.size())
-            b, t, c, w, h = x.size()
-            x = x.view(b, 1, t * c, w, h)
-            x = F.relu(self.conv2_bn(self.conv2(x)))
-            x = self.pool2(x)
-            # print(x.size())
-            b, t, c, w, h = x.size()
-            x = x.view(b, 1, t * c, w, h)
-            x = F.relu(self.conv3(x))
-            # print(x.size())
-            _, t, c, w, h = x.size()
-        return t * c * w * h
+        self.out = nn.Linear(128, num_classes)  # fully connected layer, output classes
 
     def forward(self, x):
-        x = F.relu(self.conv1_bn(self.conv1(x)))
-        x = self.pool1(x)
-        b, t, c, w, h = x.size()
-        x = x.view(b, 1, t * c, w, h)
-        x = F.relu(self.conv2_bn(self.conv2(x)))
-        x = self.pool2(x)
-        b, t, c, w, h = x.size()
-        x = x.view(b, 1, t * c, w, h)
-        x = F.relu(self.conv3(x))
-        x = x.view(-1, self.features_size)
-        x = self.fc1(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
+        x = x.squeeze(1)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = x.view(x.size(0), -1) 
+        output = self.out(x)
+        return output
     
+
 class CNN_3D(nn.Module):
     """
     CNN_3D model
@@ -355,11 +326,11 @@ if __name__ == '__main__':
             patch_size = 5,
             n_planes =  2
         )
-    # model = CNN_2D(
-    #         input_channels = band,
-    #         num_classes = num_classes + 1,
-    #         patch_size = 64
-    #     )
+    model = CNN_2D(
+            input_channels = band,
+            num_classes = num_classes + 1,
+            patch_size = 8
+        )
     # model = CNN_1D(
     #         input_channels = band,
     #         num_classes = num_classes + 1
@@ -374,7 +345,7 @@ if __name__ == '__main__':
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f'{total_trainable_params:,} training parameters.')
-    input = torch.randn([2,1,32,5,5]).cuda()
+    input = torch.randn([2,1,32,8,8]).cuda()
     print(model(input).shape)
     flops, params = profile(model, inputs=(input,))
     print("flops:{:.3f}M".format(flops / 1e6))
@@ -382,4 +353,4 @@ if __name__ == '__main__':
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params
     # --------------------------------------------------#
-    summary(model, input_size=(1,32,5,5), batch_size=-1)
+    summary(model, input_size=(1,32,8,8), batch_size=-1)
