@@ -11,12 +11,14 @@ from scipy.io import loadmat,savemat
 
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
+from models.HyperMAC_1D import HyperMAC_1D
 from models.HyperMAC_2D import HyperMAC_2D
 from models.HyperMAC_3D import HyperMAC_3D
 # from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
 from models.HyperMAC_MultiScale_2D_FCfront import HyperMAC_2D_MultiScale
 # from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
 from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale
+from models.ResNet_1D import ResNet_1D
 from models.ResNet_2D import ResNet_2D
 from models.ResNet_3D import ResNet_3D
 
@@ -31,37 +33,35 @@ from test import test_epoch
 #-------------------------------------------------------------------------------
 # setting the parameters
 # model mode
-mode = "test" # train or test
+mode = "train" # train or test
 pretrained = False # pretrained or not
 model_path = r"logs\2023-03-23-02-35-43-HyperMAC_MultiScale-3D-wetland2015\model_state_dict.pkl"
 
 # model settings
-model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
+model_type = "Transformer" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
 Transformer_mode = "ViT" # if Transformer : ViT CAF
 CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
-HyperMAC_mode = "3D" # if HyperMAC : 2D 3D
-ResNet_mode = "2D" # if ResNet : 2D 3D
+HyperMAC_mode = "1D" # if HyperMAC : 1D 2D 3D
+ResNet_mode = "1D" # if ResNet : 1D 2D 3D
 HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
 
 # training settings
 gpu = 0
-epoch = 40
+epoch = 500
 #HyperMAC 3D =>40-50 HyperMAC 2D =>120 CNN_1D/CNN_3D/CNN_3D_Classifer_1D/RNN_1D =>500 others =>100-200
 test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-5
-#HyperMAC 3D =>5e-2/5e-3 others =>5e-4
-weight_decay = 0
-# HyperMAC 3D =>0 others =>5e-3
+learning_rate = 5e-3
+weight_decay = 5e-3
 gamma = 0.9
 
 # data settings
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-year = 2015 # if wetland
+year = 2017 # if wetland
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
@@ -135,7 +135,7 @@ elif HSI_data == "wetland":
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
 
-    if model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale":
+    if model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
         save_colormap_2 = save_colormap_1
 
     elif model_type == "Transformer":
@@ -223,9 +223,9 @@ elif model_type == "CNN_RNN":
         model = CNN_2D(
             input_channels = band,
             num_classes = num_classes + 1,
-            patch_size = 64
+            patch_size = 8
         )
-        patches = 64
+        patches = 8
 
     elif CNN_mode == "CNN_3D":
         model = CNN_3D(
@@ -275,6 +275,13 @@ elif model_type == "CNN_RNN":
 # HyperMAC models
 #-------------------------------------------------------------------------------
 elif model_type == "HyperMAC":
+    if HyperMAC_mode == "1D":
+        model = HyperMAC_1D(
+            input_channels = 1,
+            num_classes = num_classes + 1
+        )
+        patches = 1
+
     if HyperMAC_mode == "2D":
         model = HyperMAC_2D(
             input_channels = band,
@@ -349,6 +356,13 @@ elif model_type == "HyperMAC_MultiScale":
 # ResNet models
 #-------------------------------------------------------------------------------
 elif model_type == "ResNet":
+    if ResNet_mode == "1D":
+        model = ResNet_1D(
+            input_channels = 1,
+            num_classes = num_classes + 1
+        )
+        patches = 1
+
     if ResNet_mode == "2D":
         model = ResNet_2D(
             input_channels = band,
