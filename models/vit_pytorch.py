@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
+from torchsummary import summary
+from thop import profile
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -150,3 +152,58 @@ class ViT(nn.Module):
 
         # MLP classification layer
         return self.mlp_head(x)
+
+if __name__ == '__main__':
+    model = ViT(
+            image_size = 3,
+            near_band = 3,
+            num_patches = 32,
+            num_classes = 11,
+            dim = 64,
+            depth = 5,
+            heads = 4,
+            mlp_dim = 8,
+            dropout = 0.1,
+            emb_dropout = 0.1,
+            mode = "ViT"
+        ).cuda()
+    input = torch.randn([1, 32, 27]).cuda()
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'{total_params:,} total parameters.')
+    total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'{total_trainable_params:,} training parameters.')
+    print(model(input).shape)
+    flops, params = profile(model, inputs=(input,))
+    print("flops:{:.3f}M".format(flops / 1e6))
+    print("params:{:.3f}M".format(params / 1e6))
+    # --------------------------------------------------#
+    #   用来测试网络能否跑通，同时可查看FLOPs和params
+    # --------------------------------------------------#
+    summary(model, input_size=(32, 27), batch_size=-1)
+
+    model = ViT(
+            image_size = 3,
+            near_band = 3,
+            num_patches = 32,
+            num_classes = 11,
+            dim = 64,
+            depth = 5,
+            heads = 4,
+            mlp_dim = 8,
+            dropout = 0.1,
+            emb_dropout = 0.1,
+            mode = "CAF"
+        ).cuda()
+    input = torch.randn([1, 32, 27]).cuda()
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'{total_params:,} total parameters.')
+    total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'{total_trainable_params:,} training parameters.')
+    print(model(input).shape)
+    flops, params = profile(model, inputs=(input,))
+    print("flops:{:.3f}M".format(flops / 1e6))
+    print("params:{:.3f}M".format(params / 1e6))
+    # --------------------------------------------------#
+    #   用来测试网络能否跑通，同时可查看FLOPs和params
+    # --------------------------------------------------#
+    summary(model, input_size=(32, 27), batch_size=-1)
