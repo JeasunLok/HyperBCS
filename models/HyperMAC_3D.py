@@ -166,7 +166,7 @@ class Bottleneck(nn.Module):
 
 
 class HyperMAC_3D(nn.Module):
-    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=1000,
+    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=11,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None):
         super(HyperMAC_3D, self).__init__()
 
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     print(f'{total_trainable_params:,} training parameters.')
     print(model(input).shape)
     flops, params = profile(model, inputs=(input,))
-    print("flops:{:.3f}G".format(flops / 1e9))
+    print("flops:{:.3f}M".format(flops / 1e6))
     print("params:{:.3f}M".format(params / 1e6))
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params
