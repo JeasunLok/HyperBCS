@@ -44,7 +44,7 @@ class MLP_4(nn.Module):
     
 class CNN_1D(nn.Module):
     """
-    CNN_!D model
+    CNN_1D model
     """
 
     def weight_init(m):
@@ -345,21 +345,21 @@ if __name__ == '__main__':
             patch_size = 5,
             dilation =  1
         )
-    model = RNN_1D(
-            input_channels = band,
-            num_classes = num_classes + 1,
-        )
+    # model = RNN_1D(
+    #         input_channels = band,
+    #         num_classes = num_classes + 1,
+    #     )
     model = CNN_3D(
             input_channels = band,
             num_classes = num_classes + 1,
             patch_size = 5,
             n_planes =  2
         )
-    model = CNN_2D(
-            input_channels = band,
-            num_classes = num_classes + 1,
-            patch_size = 64
-        )
+    # model = CNN_2D(
+    #         input_channels = band,
+    #         num_classes = num_classes + 1,
+    #         patch_size = 64
+    #     )
     # model = CNN_1D(
     #         input_channels = band,
     #         num_classes = num_classes + 1
@@ -374,7 +374,7 @@ if __name__ == '__main__':
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f'{total_trainable_params:,} training parameters.')
-    input = torch.randn([2,1,32,64,64]).cuda()
+    input = torch.randn([2,1,32,5,5]).cuda()
     print(model(input).shape)
     flops, params = profile(model, inputs=(input,))
     print("flops:{:.3f}M".format(flops / 1e6))
@@ -382,4 +382,4 @@ if __name__ == '__main__':
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params
     # --------------------------------------------------#
-    summary(model, input_size=(1,32,64,64), batch_size=-1)
+    summary(model, input_size=(1,32,5,5), batch_size=-1)
