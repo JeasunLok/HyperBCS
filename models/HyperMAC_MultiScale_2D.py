@@ -160,7 +160,7 @@ class Bottleneck(nn.Module):
 
 class HyperMAC_2D_MultiScale(nn.Module):
 
-    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=1000,
+    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=11,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(HyperMAC_2D_MultiScale, self).__init__()
@@ -260,23 +260,24 @@ class HyperMAC_2D_MultiScale(nn.Module):
         x = self.maxpool(x)
         x_multiscale = self.maxpool_multiscale(x_multiscale)
 
-        x = self.layer1(x)
-        x_multiscale = self.layer1(x_multiscale)
+        x = self.layer1(x + x_multiscale)
+        # x_multiscale = self.layer1(x_multiscale)
 
         # x = self.layer2(x)
 
         x = self.avgpool(x)
-        x_multiscale = self.avgpool(x_multiscale)
+        # x_multiscale = self.avgpool(x_multiscale)
 
         x = torch.flatten(x, 1)
-        x_multiscale = torch.flatten(x_multiscale, 1)
+        # x_multiscale = torch.flatten(x_multiscale, 1)
 
         x = self.fc(x)
-        x_multiscale = self.fc(x_multiscale)
+        # x_multiscale = self.fc(x_multiscale)
 
-        output_x = self.scale1_rate * x + self.scale2_rate * x_multiscale
+        # output_x = self.scale1_rate * x + self.scale2_rate * x_multiscale
 
-        return output_x
+        # return output_x
+        return x
 
 if __name__ == '__main__':
     model = HyperMAC_2D_MultiScale().cuda()
@@ -287,7 +288,7 @@ if __name__ == '__main__':
     print(f'{total_trainable_params:,} training parameters.')
     print(model(input).shape)
     flops, params = profile(model, inputs=(input,))
-    print("flops:{:.3f}G".format(flops / 1e9))
+    print("flops:{:.3f}M".format(flops / 1e6))
     print("params:{:.3f}M".format(params / 1e6))
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params

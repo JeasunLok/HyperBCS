@@ -165,10 +165,10 @@ class Bottleneck(nn.Module):
         return out
 
 
-class HyperMAC_3D_MultiScale(nn.Module):
+class HyperMAC_3D_MultiScale_FCback(nn.Module):
     def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=1000,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None):
-        super(HyperMAC_3D_MultiScale, self).__init__()
+        super(HyperMAC_3D_MultiScale_FCback, self).__init__()
 
         self.inplanes = 64
         self.dilation = 1
@@ -280,7 +280,7 @@ class HyperMAC_3D_MultiScale(nn.Module):
 
 
 if __name__ == '__main__':
-    model = HyperMAC_3D_MultiScale().cuda()
+    model = HyperMAC_3D_MultiScale_FCback().cuda()
     input = torch.randn([2,1,32,8,8]).cuda()
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
