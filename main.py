@@ -17,6 +17,8 @@ from models.HyperMAC_3D import HyperMAC_3D
 from models.HyperMAC_MultiScale_2D_FCfront import HyperMAC_2D_MultiScale
 # from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
 from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale
+from models.ResNet_2D import ResNet_2D
+from models.ResNet_3D import ResNet_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -29,26 +31,27 @@ from test import test_epoch
 #-------------------------------------------------------------------------------
 # setting the parameters
 # model mode
-mode = "train" # train or test
+mode = "test" # train or test
 pretrained = False # pretrained or not
-model_path = r"logs\2023-03-22-03-35-39-HyperMAC_MultiScale-3D-wetland2017\model_state_dict.pkl"
+model_path = r"logs\2023-03-23-02-35-43-HyperMAC_MultiScale-3D-wetland2015\model_state_dict.pkl"
 
 # model settings
-model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale
+model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
 Transformer_mode = "ViT" # if Transformer : ViT CAF
 CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 HyperMAC_mode = "3D" # if HyperMAC : 2D 3D
+ResNet_mode = "2D" # if ResNet : 2D 3D
 HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
 
 # training settings
 gpu = 0
-epoch = 50
+epoch = 40
 #HyperMAC 3D =>40-50 HyperMAC 2D =>120 CNN_1D/CNN_3D/CNN_3D_Classifer_1D/RNN_1D =>500 others =>100-200
 test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-3
+learning_rate = 5e-5
 #HyperMAC 3D =>5e-2/5e-3 others =>5e-4
 weight_decay = 0
 # HyperMAC 3D =>0 others =>5e-3
@@ -87,6 +90,12 @@ elif model_type == "HyperMAC_MultiScale":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data + str(year)
+
+elif model_type == "ResNet":
+    if HSI_data == "IndianPine":
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data
+    else:
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data + str(year)
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -337,6 +346,43 @@ elif model_type == "HyperMAC_MultiScale":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
+# ResNet models
+#-------------------------------------------------------------------------------
+elif model_type == "ResNet":
+    if ResNet_mode == "2D":
+        model = ResNet_2D(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 8
+    
+    if ResNet_mode == "3D":
+        model = ResNet_3D(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 8
+
+    # image and label should be mirrored
+    mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
+    mirror_train_label = mirror_hsi(height, width, 1, np.expand_dims(train_label, axis=2), patch=patches)
+    mirror_test_label = mirror_hsi(height, width, 1, np.expand_dims(test_label, axis=2), patch=patches)
+
+    mirror_train_label = mirror_train_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+    mirror_test_label = mirror_test_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+
+    train_dataset = HSI_Dataset(mirror_image, mirror_train_label, True, patches)
+    train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
+
+    test_dataset = HSI_Dataset(mirror_image, mirror_test_label, True, patches)
+    test_loader = Data.DataLoader(test_dataset, batch_size, shuffle = True)
+
+    true_dataset = HSI_Dataset(mirror_image, mirror_test_label, False, patches)
+    true_loader = Data.DataLoader(true_dataset, batch_size, shuffle = False)
+
+    total_pos_true = true_dataset.indices
+#-------------------------------------------------------------------------------
+
 # model settings
 #-------------------------------------------------------------------------------
 model = model.cuda()
@@ -404,6 +450,8 @@ if mode == "train":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     elif model_type == "HyperMAC_MultiScale":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "ResNet":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ResNet_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     # save model and its parameters 
     torch.save(model, time_folder + r"\\model.pkl")
     torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
@@ -419,10 +467,10 @@ prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
-    elif model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale":
+    elif model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
         prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
 
-if model_type == "CNN_RNN" or model_type =="HyperMAC" or model_type == "HyperMAC_MultiScale":
+if model_type == "CNN_RNN" or model_type =="HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
     for i in range(height):
         for j in range(width):
             prediction[i,j] = prediction_temp[padding+i,padding+j]
