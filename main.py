@@ -14,10 +14,10 @@ from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,R
 from models.HyperMAC_1D import HyperMAC_1D
 from models.HyperMAC_2D import HyperMAC_2D
 from models.HyperMAC_3D import HyperMAC_3D
-# from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
-from models.HyperMAC_MultiScale_2D_FCfront import HyperMAC_2D_MultiScale
-# from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
-from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale
+from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
+from models.HyperMAC_MultiScale_2D_FCback import HyperMAC_2D_MultiScale_FCback
+from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
+from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale_FCback
 from models.ResNet_1D import ResNet_1D
 from models.ResNet_2D import ResNet_2D
 from models.ResNet_3D import ResNet_3D
