@@ -38,30 +38,30 @@ pretrained = False # pretrained or not
 model_path = r"logs\2023-03-23-02-35-43-HyperMAC_MultiScale-3D-wetland2015\model_state_dict.pkl"
 
 # model settings
-model_type = "Transformer" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
+model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
 Transformer_mode = "ViT" # if Transformer : ViT CAF
-CNN_mode = "CNN_2D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+CNN_mode = "CNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 HyperMAC_mode = "1D" # if HyperMAC : 1D 2D 3D
 ResNet_mode = "1D" # if ResNet : 1D 2D 3D
-HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
+HyperMAC_MultiScale_mode = "2D" # if HyperMAC_MultiScale : 2D 3D
 
 # training settings
 gpu = 0
-epoch = 500
+epoch = 200
 #HyperMAC 3D =>40-50 HyperMAC 2D =>120 CNN_1D/CNN_3D/CNN_3D_Classifer_1D/RNN_1D =>500 others =>100-200
 test_freq = 500
 batch_size = 32
 patches = 3
 band_patches = 3
-learning_rate = 5e-3
-weight_decay = 5e-3
+learning_rate = 5e-4
+weight_decay = 0
 gamma = 0.9
 
 # data settings
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-year = 2017 # if wetland
+year = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
@@ -418,14 +418,14 @@ if mode == "train":
     print("===============================================================================")
     print("start training")
     tic = time.time()
-    epoch_loss = np.zeros([2, epoch])
+    epoch_result = np.zeros([3, epoch])
     for e in range(epoch): 
         model.train()
         train_acc, train_loss, label_t, prediction_t = train_epoch(model, train_loader, criterion, optimizer, e, epoch)
         scheduler.step()
         OA_train, AA_train, Kappa_train, CA_train, CM_train = output_metric(label_t, prediction_t) 
         print("Epoch: {:03d} | train_loss: {:.4f} | train_acc: {:.4f}".format(e+1, train_loss, train_acc))
-        epoch_loss[0][e], epoch_loss[1][e] = e+1, train_loss
+        epoch_result[0][e], epoch_result[1][e], epoch_result[2][e] = e+1, train_loss, train_acc
 
         if ((e+1) % test_freq == 0) | (e == epoch - 1):
             print("===============================================================================")
@@ -455,7 +455,7 @@ elif mode == "test":
     print("===============================================================================")
 
 if mode == "train":
-    draw_result_visualization(time_folder, epoch_loss)
+    draw_result_visualization(time_folder, epoch_result)
     if model_type == "Transformer":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     elif model_type == "CNN_RNN":
@@ -493,6 +493,7 @@ print("end testing")
 print("===============================================================================")
 
 # result show
+plt.figure()
 plt.subplot(1,1,1)
 if HSI_data == "wetland":
     plt.imshow(prediction, cmap=save_colormap_2)
