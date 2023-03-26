@@ -51,6 +51,7 @@ def load_wetland_data(time_folder, image_path, label_path, year, mode, value, sa
       test_label[sample_position[j][0]][sample_position[j][1]] = 0
 
   # save the image of train and test samples
+  plt.imsave(time_folder + r"\\all_label.png", label, cmap=save_colormap, dpi=300)
   plt.imsave(time_folder + r"\\train_label.png", train_label, cmap=save_colormap, dpi=300)
   plt.imsave(time_folder + r"\\test_label.png", test_label, cmap=save_colormap, dpi=300)
   return image, train_label, test_label
