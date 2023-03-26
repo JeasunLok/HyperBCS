@@ -4,24 +4,12 @@ import torch.nn.functional as F
 from torchsummary import summary
 from thop import profile
 
-def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
-
-
-def conv1x1(in_planes, out_planes, stride=1):
-    """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
-
-def position(H, W, is_cuda=True):
+def position_1D(W, is_cuda=True):
     if is_cuda:
-        loc_w = torch.linspace(-1.0, 1.0, W).cuda().unsqueeze(0).repeat(H, 1)
-        loc_h = torch.linspace(-1.0, 1.0, H).cuda().unsqueeze(1).repeat(1, W)
+        loc_w = torch.linspace(-1.0, 1.0, W).cuda()
     else:
-        loc_w = torch.linspace(-1.0, 1.0, W).unsqueeze(0).repeat(H, 1)
-        loc_h = torch.linspace(-1.0, 1.0, H).unsqueeze(1).repeat(1, W)
-    loc = torch.cat([loc_w.unsqueeze(0), loc_h.unsqueeze(0)], 0).unsqueeze(0)
+        loc_w = torch.linspace(-1.0, 1.0, W)
+    loc = torch.cat([loc_w.unsqueeze(0)], 0).unsqueeze(0)
     return loc
 
 
@@ -51,46 +39,55 @@ class ACmix(nn.Module):
         self.rate2 = torch.nn.Parameter(torch.Tensor(1))
         self.head_dim = self.out_planes // self.head
 
-        self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=1)
-        self.conv2 = nn.Conv2d(in_planes, out_planes, kernel_size=1)
-        self.conv3 = nn.Conv2d(in_planes, out_planes, kernel_size=1)
-        self.conv_p = nn.Conv2d(2, self.head_dim, kernel_size=1)
+        self.conv1 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
+        self.conv2 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
+        self.conv3 = nn.Conv1d(in_planes, out_planes, kernel_size=1)
+        self.conv_p = nn.Conv1d(1, self.head_dim, kernel_size=1)
 
         self.padding_att = (self.dilation * (self.kernel_att - 1) + 1) // 2
         self.pad_att = torch.nn.ReflectionPad2d(self.padding_att)
         self.unfold = nn.Unfold(kernel_size=self.kernel_att, padding=0, stride=self.stride)
         self.softmax = torch.nn.Softmax(dim=1)
 
-        self.fc = nn.Conv2d(3*self.head, self.kernel_conv * self.kernel_conv, kernel_size=1, bias=False)
-        self.dep_conv = nn.Conv2d(self.kernel_conv * self.kernel_conv * self.head_dim, out_planes, kernel_size=self.kernel_conv, bias=True, groups=self.head_dim, padding=1, stride=stride)
+        self.fc = nn.Conv1d(3*self.head*self.head_dim, self.kernel_conv * self.kernel_conv * self.head_dim, kernel_size=1, bias=False)
+        self.dep_conv = nn.Conv1d(self.kernel_conv * self.kernel_conv * self.head_dim, out_planes, kernel_size=self.kernel_conv, bias=True, groups=self.head_dim, padding=1, stride=stride)
 
         self.reset_parameters()
     
     def reset_parameters(self):
         init_rate_half(self.rate1)
         init_rate_half(self.rate2)
-        kernel = torch.zeros(self.kernel_conv * self.kernel_conv, self.kernel_conv, self.kernel_conv)
-        for i in range(self.kernel_conv * self.kernel_conv):
-            kernel[i, i//self.kernel_conv, i%self.kernel_conv] = 1.
-        kernel = kernel.squeeze(0).repeat(self.out_planes, 1, 1, 1)
-        self.dep_conv.weight = nn.Parameter(data=kernel, requires_grad=True)
+        nn.init.kaiming_normal_(self.dep_conv.weight, mode='fan_out', nonlinearity='relu')
         self.dep_conv.bias = init_rate_0(self.dep_conv.bias)
 
     def forward(self, x):
 
+        # print("xshape")
+        # print(x.shape)
 
         q, k, v = self.conv1(x), self.conv2(x), self.conv3(x)
         scaling = float(self.head_dim) ** -0.5
-        b, c, h, w = q.shape
+        b, c, w = q.shape
+
+        # print("qshape")
+        # print(q.shape)
+
+        w_out =  w//self.stride
 
 
-        h_out, w_out = h//self.stride, w//self.stride
+# ### att
+        # ## positional encoding
+        pe = self.conv_p(position_1D(w, x.is_cuda))
 
-        pe = self.conv_p(position(h, w, x.is_cuda))
+        # print("peshape")
+        # print(pe.shape)
 
-        q_att = q.view(b*self.head, self.head_dim, h, w) * scaling
-        k_att = k.view(b*self.head, self.head_dim, h, w)
-        v_att = v.view(b*self.head, self.head_dim, h, w)
+        q_att = q.view(b*self.head, self.head_dim, w) * scaling
+        k_att = k.view(b*self.head, self.head_dim, w)
+        v_att = v.view(b*self.head, self.head_dim, w)
+
+        # print("q_attshape")
+        # print(q_att.shape)
 
         if self.stride > 1:
             q_att = stride(q_att, self.stride)
@@ -98,38 +95,82 @@ class ACmix(nn.Module):
         else:
             q_pe = pe
 
-        unfold_k = self.unfold(self.pad_att(k_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, h_out, w_out) # b*head, head_dim, k_att^2, h_out, w_out
-        unfold_rpe = self.unfold(self.pad_att(pe)).view(1, self.head_dim, self.kernel_att*self.kernel_att, h_out, w_out) # 1, head_dim, k_att^2, h_out, w_out
+        # print("qpeshape")
+        # print(q_pe.shape)
+
+        unfold_k = self.unfold(self.pad_att(k_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, w_out) # b*head, head_dim, k_att^2, h_out, w_out
+        unfold_rpe = self.unfold(self.pad_att(pe)).view(1, self.head_dim, self.kernel_att*self.kernel_att, w_out) # 1, head_dim, k_att^2, h_out, w_out
         
+        # print("unfold_kshape")
+        # print(unfold_k.shape)
+        # print("unfold_rpeshape")
+        # print(unfold_rpe.shape)
+
         att = (q_att.unsqueeze(2)*(unfold_k + q_pe.unsqueeze(2) - unfold_rpe)).sum(1) # (b*head, head_dim, 1, h_out, w_out) * (b*head, head_dim, k_att^2, h_out, w_out) -> (b*head, k_att^2, h_out, w_out)
+        
+        # print("attshape")
+        # print(att.shape)
+
         att = self.softmax(att)
 
+        # print("att_softmaxshape")
+        # print(att.shape)
 
-        out_att = self.unfold(self.pad_att(v_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, h_out, w_out)
-        out_att = (att.unsqueeze(1) * out_att).sum(2).view(b, self.out_planes, h_out, w_out)
-
-        f_all = self.fc(torch.cat([q.view(b, self.head, self.head_dim, h*w), k.view(b, self.head, self.head_dim, h*w), v.view(b, self.head, self.head_dim, h*w)], 1))
+        out_att = self.unfold(self.pad_att(v_att)).view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, w_out)
         
-        f_conv = f_all.permute(0, 2, 1, 3).reshape(x.shape[0], -1, x.shape[-2], x.shape[-1])
+        # print("out_attshape")
+        # print(out_att.shape)
+
+        out_att = (att.unsqueeze(1) * out_att).sum(2).view(b, self.out_planes, w_out)
+
+        # print("out_attshape_last")
+        # print(out_att.shape)
+
+## conv
+        # print("conv_before shape")
+        # print(torch.cat([q.view(b, self.head, self.head_dim, h*w), k.view(b, self.head, self.head_dim, h*w), v.view(b, self.head, self.head_dim, h*w)], 1).shape)
+
+        f_all = self.fc(torch.cat([q.view(b, self.head*self.head_dim, w), k.view(b, self.head*self.head_dim, w), v.view(b, self.head*self.head_dim, w)], 1))
+        
+        # print("f_allshape")
+        # print(f_all.shape)
+        
+        f_conv = f_all.permute(0, 2, 1).reshape(x.shape[0], -1, x.shape[-1])
+        # print(f_all.permute(0, 2, 1, 3).shape)
+        # print(x.shape[0],x.shape[-2],x.shape[-1])
+        # print("f_convshape")
+        # print(f_conv.shape)
 
         out_conv = self.dep_conv(f_conv)
 
+        # print("out_convshape")
+        # print(out_conv.shape)
+
+        # print("result")
+        # print((self.rate1 * out_att + self.rate2 * out_conv).shape)
         return self.rate1 * out_att + self.rate2 * out_conv
     
 class Bottleneck(nn.Module):
+    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
+    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
+    # This variant is also known as ResNet V1.5 and improves accuracy according to
+    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+
     expansion = 4
+
     def __init__(self, inplanes, planes, k_att, head, k_conv, stride=1, downsample=None, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(Bottleneck, self).__init__()
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+            norm_layer = nn.BatchNorm1d
         width = int(planes * (base_width / 64.)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
-        self.conv1 = conv1x1(inplanes, width)
+        self.conv1 = nn.Conv1d(inplanes, width, kernel_size=3, padding=1)
         self.bn1 = norm_layer(width)
-        self.conv2 = ACmix(width, width, k_att, head, k_conv, stride=stride, dilation=dilation)
+        self.conv2 = nn.Conv1d(width, width, kernel_size=3, padding=1)
         self.bn2 = norm_layer(width)
-        self.conv3 = conv1x1(width, planes * self.expansion)
+        self.conv3 = nn.Conv1d(inplanes, planes * self.expansion, kernel_size=3, padding=1)
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -158,14 +199,14 @@ class Bottleneck(nn.Module):
         return out
 
 
-class HyperMAC_2D_MultiScale(nn.Module):
+class ResNet_1D(nn.Module):
 
-    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=11,
+    def __init__(self, block=Bottleneck, layers=[1], input_channels=1, k_att=7, head=4, k_conv=3, num_classes=11,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
-        super(HyperMAC_2D_MultiScale, self).__init__()
+        super(ResNet_1D, self).__init__()
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+            norm_layer = nn.BatchNorm1d
         self._norm_layer = norm_layer
 
         self.inplanes = 64
@@ -179,45 +220,32 @@ class HyperMAC_2D_MultiScale(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-
-        self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=1, padding=3,
+        # self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
+        #                        bias=False)
+        
+        self.conv1 = nn.Conv1d(input_channels, self.inplanes, kernel_size=7, stride=1, padding=3,
                                bias=False)
 
+
         self.bn1 = norm_layer(self.inplanes)
-
         self.relu = nn.ReLU(inplace=True)
-
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.maxpool_multiscale = nn.MaxPool2d(kernel_size=1, stride=1, padding=0)
-
+        self.maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self.make_layer(block, 64, layers[0], k_att, head, k_conv)
-
         # self.layer2 = self._make_layer(block, 128, layers[1], k_att, head, k_conv, stride=2,
         #                                dilate=replace_stride_with_dilation[0])
         # self.layer3 = self._make_layer(block, 256, layers[2], k_att, head, k_conv, stride=2,
         #                                dilate=replace_stride_with_dilation[1])
         # self.layer4 = self._make_layer(block, 512, layers[3], k_att, head, k_conv, stride=2,
         #                                dilate=replace_stride_with_dilation[2])
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-
+        self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Linear(64 * block.expansion, num_classes)
-
-        self.scale1_rate = torch.nn.Parameter(torch.Tensor(1))
-        self.scale2_rate = torch.nn.Parameter(torch.Tensor(1))
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm1d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        init_rate_half(self.scale1_rate)
-        init_rate_half(self.scale2_rate)
 
     def make_layer(self, block, planes, blocks, rate, k, head, stride=1, dilate=False):
         norm_layer = self._norm_layer
@@ -228,7 +256,7 @@ class HyperMAC_2D_MultiScale(nn.Module):
             stride = 1
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.Conv1d(self.inplanes, planes * block.expansion, stride=stride, kernel_size=1),
                 norm_layer(planes * block.expansion),
             )
 
@@ -244,44 +272,69 @@ class HyperMAC_2D_MultiScale(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-
-        x = x.squeeze(1)
-        x_multiscale = x[:, :, x.shape[-2]//4:(3*(x.shape[-2])//4), x.shape[-1]//4:(3*(x.shape[-1])//4)]
+        # See note [TorchScript super()]
+        # print("1")
+        # print(x.shape)
+        
+        x = x.unsqueeze(dim=1)
+        # print("2")
+        # print(x.shape)
 
         x = self.conv1(x)
-        x_multiscale = self.conv1(x_multiscale)
+        # print("3")
+        # print(x.shape)
 
         x = self.bn1(x)
-        x_multiscale = self.bn1(x_multiscale)
+        # print("4")
+        # print(x.shape)
 
         x = self.relu(x)
-        x_multiscale = self.relu(x_multiscale)
+        # print("5")
+        # print(x.shape)
 
         x = self.maxpool(x)
-        x_multiscale = self.maxpool_multiscale(x_multiscale)
+        # print("6")
+        # print(x.shape)
 
-        x = self.layer1(x + x_multiscale)
-        # x_multiscale = self.layer1(x_multiscale)
-
+        # print("layer1")
+        x = self.layer1(x)
+        # print("7")
+        # print(x.shape)
+        # print("layer2")
         # x = self.layer2(x)
+        # print("layer3")
+        # x = self.layer3(x)
+        # print("layer4")
+        # x = self.layer4(x)
 
         x = self.avgpool(x)
-        # x_multiscale = self.avgpool(x_multiscale)
+        # print("8")
+        # print(x.shape)
 
         x = torch.flatten(x, 1)
-        # x_multiscale = torch.flatten(x_multiscale, 1)
-
+        # print("9")
+        # print(x.shape)
+        
         x = self.fc(x)
-        # x_multiscale = self.fc(x_multiscale)
+        # print("10")
+        # print(x.shape)
 
-        # output_x = self.scale1_rate * x + self.scale2_rate * x_multiscale
-
-        # return output_x
         return x
 
+
+
+# def _resnet(block, layers, input_channels, num_classes, **kwargs):
+#     model = HyperMAC_2D(block, layers, input_channels, num_classes=num_classes, **kwargs)
+#     return model
+
+
+# def ACmix_ResNet(input_channels=3, num_classes=1000, layers=[1,1,6,3], **kwargs):
+#     return _resnet(Bottleneck, layers, input_channels, num_classes, **kwargs)
+
+
 if __name__ == '__main__':
-    model = HyperMAC_2D_MultiScale().cuda()
-    input = torch.randn([2,32,8,8]).cuda()
+    model = ResNet_1D().cuda()
+    input = torch.randn([2,32]).cuda()
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -293,4 +346,4 @@ if __name__ == '__main__':
     # --------------------------------------------------#
     #   用来测试网络能否跑通，同时可查看FLOPs和params
     # --------------------------------------------------#
-    summary(model, input_size=(1,32,8,8), batch_size=-1)
+    summary(model, input_size=(32,), batch_size=-1)
