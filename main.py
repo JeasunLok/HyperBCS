@@ -61,7 +61,7 @@ gamma = 0.9
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-year = 2015 # if wetland
+wetland_id = 2015 # if wetland
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
@@ -71,31 +71,31 @@ if model_type == "Transformer":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data + str(wetland_id)
 
 elif model_type == "CNN_RNN":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(wetland_id)
 
 elif model_type == "HyperMAC":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data + str(wetland_id)
 
 elif model_type == "HyperMAC_MultiScale":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data + str(wetland_id)
 
 elif model_type == "ResNet":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data + str(year)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data + str(wetland_id)
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -131,7 +131,7 @@ if HSI_data == "IndianPine":
 elif HSI_data == "wetland":
     # color settings
     colormap_mat = loadmat(r".\\data\\wetland_colormap.mat")
-    colormap = colormap_mat["colormap_" + str(year)]
+    colormap = colormap_mat["colormap_" + str(wetland_id)]
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
 
@@ -142,9 +142,9 @@ elif HSI_data == "wetland":
         save_colormap_2 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap.tolist(), 256)
 
     # data loading
-    image_path = r".\\data\\" + str(year)[-2:] +"_image.mat"
-    label_path = r".\\data\\" + str(year)[-2:] +"_label.mat"
-    input, train_label, test_label = load_wetland_data(time_folder, image_path, label_path, year, sample_mode, sample_value, save_colormap_1)
+    image_path = r".\\data\\" + str(wetland_id)[-2:] +"_image.mat"
+    label_path = r".\\data\\" + str(wetland_id)[-2:] +"_label.mat"
+    input, train_label, test_label = load_wetland_data(time_folder, image_path, label_path, wetland_id, sample_mode, sample_value, save_colormap_1)
 #-------------------------------------------------------------------------------
 
 # all_data and classes

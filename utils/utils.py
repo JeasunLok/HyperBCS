@@ -23,8 +23,8 @@ class AverageMeter(object):
 #-------------------------------------------------------------------------------
 
 # a function to load our wetland data
-def load_wetland_data(time_folder, image_path, label_path, year, mode, value, save_colormap):
-  data_year = str(year)[-2:]
+def load_wetland_data(time_folder, image_path, label_path, wetland_id, mode, value, save_colormap):
+  data_year = str(wetland_id)[-2:]
   image = loadmat(image_path)
   label = loadmat(label_path)
   image_mark = "image_" + data_year
