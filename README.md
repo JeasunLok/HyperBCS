@@ -1,1 +1,2 @@
-## Hyper2MAC
+## HyperMCS
+Code Repositories of HyperMCS
