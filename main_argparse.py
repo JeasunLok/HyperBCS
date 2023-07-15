@@ -82,8 +82,8 @@ parser.add_argument('-bp', '--band_patch', type=int, default=3, help="band patch
 parser.add_argument('-e', '--epoch', type=int, default=100, help="traing epoch")
 parser.add_argument('-tf', '--test_freq', type=int, default=20, help="testing frequency")
 parser.add_argument('-bs', '--batch_size', type=int, default=16, help="batch size")
-parser.add_argument('-lr', '--learning_rate', type=int, default=5e-4, help="learning rate of Adam")
-parser.add_argument('-wd', '--weight_decay', type=int, default=0, help="weight decay of Adam")
+parser.add_argument('-lr', '--learning_rate', type=float, default=5e-4, help="learning rate of Adam")
+parser.add_argument('-wd', '--weight_decay', type=float, default=0, help="weight decay of Adam")
 parser.add_argument('-d', '--dataset', type=str, default="MongCai", choices=['MongCai', "CamPha"], help="datasets you can choose")
 parser.add_argument('-s', '--sample_num', type=int, default=200, help="the number of training samples")
 
