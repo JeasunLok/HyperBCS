@@ -177,7 +177,7 @@ plt.bar(Patch_xaxis-width/2, np.array([Best_2D_8_result*100, Best_3D_8_result*10
 plt.bar(Patch_xaxis+width/2, np.array([Patch_2D_16_result*100, Patch_3D_16_result*100]), width=width, label="patches=16", color="#2C38A3")
 ax31.set_ylim(97,99.01)
 plt.yticks(np.arange(97,99.01,0.25))
-plt.xticks(Patch_xaxis, ["Hyper2MAC_2D", "Hyper2MAC_3D"])
+plt.xticks(Patch_xaxis, ["2D-HyperMBS 2D", "3D-HyperBCS"])
 plt.xlabel("Network",  fontsize=12)
 plt.ylabel("Accuracy", fontsize=12)
 ax31.legend(fontsize=10, frameon=False, ncol=2, loc='upper right')# 图例

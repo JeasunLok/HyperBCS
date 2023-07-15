@@ -65,9 +65,14 @@ class ACmix(nn.Module):
         self.dep_conv_3D.bias = init_rate_0(self.dep_conv_3D.bias)
 
     def forward(self, x):
+
+        # print("x:",x.shape)
+
         q, k, v = self.conv1_3D(x), self.conv2_3D(x), self.conv3_3D(x)
         scaling = float(self.head_dim) ** -0.5
         b, l, c, h, w = q.shape
+
+        # print("q:",q.shape)
 
         h_out, w_out = h//self.stride, w//self.stride
 
@@ -83,11 +88,16 @@ class ACmix(nn.Module):
         else:
             q_pe = pe
 
+        # print("q_attention:",q_att.shape)
+        # print("q_positional_embeddings:",q_pe.shape)
+
         unfold_temp = self.pad_att_3D(k_att)
         unfold_k = torch.tensor([]).cuda()
         for i in range (unfold_temp.shape[2]):
             unfold_k_temp = self.unfold(unfold_temp[:,:,i,:,:]).unsqueeze(0)
             unfold_k = torch.concat([unfold_k, unfold_k_temp], 0)
+
+        # print("unfold_k_first:",unfold_k.shape)
 
         unfold_temp = self.pad_att_3D(pe)
         unfold_rpe = torch.tensor([]).cuda()
@@ -95,12 +105,18 @@ class ACmix(nn.Module):
             unfold_rpe_temp = self.unfold(unfold_temp[:,:,i,:,:]).unsqueeze(0)
             unfold_rpe = torch.concat([unfold_rpe, unfold_rpe_temp], 0)
 
+        # print("unfold_rpe_first:",unfold_rpe.shape)
+
         c_out = unfold_temp.shape[2]//self.stride
 
         unfold_k = unfold_k.view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, c_out, h_out, w_out)
         unfold_rpe = unfold_rpe.view(1, self.head_dim, self.kernel_att*self.kernel_att, c_out, h_out, w_out)
 
+        # print("unfold_k_last:",unfold_k.shape)
+        # print("unfold_rpe_last:",unfold_rpe.shape)
+
         att = (q_att.unsqueeze(2)*(unfold_k + q_pe.unsqueeze(2) - unfold_rpe)).sum(1) 
+        # print("attention:",att.shape)
         att = self.softmax(att)
 
         unfold_temp = self.pad_att_3D(v_att)
@@ -109,15 +125,24 @@ class ACmix(nn.Module):
             unfold_v_temp = self.unfold(unfold_temp[:,:,i,:,:]).unsqueeze(0)
             unfold_v = torch.concat([unfold_v, unfold_v_temp], 0)
 
+        # print("unfold_v_first:",unfold_v.shape)
+
         out_att = unfold_v.view(b*self.head, self.head_dim, self.kernel_att*self.kernel_att, c_out, h_out, w_out)
+
+        # print("unfold_v_last:",out_att.shape)
+
         out_att = (att.unsqueeze(1) * out_att).sum(2).view(b, self.out_planes, c_out, h_out, w_out)
 
+        # print("output_attention:",out_att.shape)
 
+        # print("q for conv:",q.view(b, self.head, self.head_dim, c, h*w).shape)
+        # print("concat qkv:",torch.cat([q.view(b, self.head, self.head_dim, c, h*w), k.view(b, self.head, self.head_dim, c, h*w), v.view(b, self.head, self.head_dim, c, h*w)], 1).shape)
         f_all = self.fc_3D(torch.cat([q.view(b, self.head, self.head_dim, c, h*w), k.view(b, self.head, self.head_dim, c, h*w), v.view(b, self.head, self.head_dim, c, h*w)], 1))
-
+        # print("f_all:",f_all.shape)
         f_conv = f_all.permute(0, 2, 1, 3, 4).reshape(x.shape[0], -1, x.shape[-3], x.shape[-2], x.shape[-1])
-     
+        # print("f_conv:",f_conv.shape)
         out_conv = self.dep_conv_3D(f_conv)
+        # print("output_conv:",f_conv.shape)
         return self.rate1 * out_att + self.rate2 * out_conv
     
 class Bottleneck(nn.Module):
@@ -246,7 +271,7 @@ class HyperMAC_3D_MultiScale(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-
+        # print(x.shape)
         x_multiscale = x[:, :, :, x.shape[-2]//4:(3*(x.shape[-2])//4), x.shape[-1]//4:(3*(x.shape[-1])//4)]
 
         x = self.conv1_3D(x)
@@ -261,6 +286,7 @@ class HyperMAC_3D_MultiScale(nn.Module):
         x = self.maxpool_3D(x)
         x_multiscale = self.maxpool_3D_multiscale(x_multiscale)
  
+        # print(x.shape)
         x = self.layer1(x + x_multiscale)
         # x_multiscale = self.layer1(x_multiscale)
         # x = self.layer2(x)

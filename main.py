@@ -21,6 +21,8 @@ from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale_FCback
 from models.ResNet_1D import ResNet_1D
 from models.ResNet_2D import ResNet_2D
 from models.ResNet_3D import ResNet_3D
+from models.ResNet_MultiScale_2D import ResNet_MultiScale_2D
+from models.ResNet_MultiScale_3D import ResNet_MultiScale_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -38,22 +40,23 @@ pretrained = False # pretrained or not
 model_path = r"logs\2023-03-23-02-35-43-HyperMAC_MultiScale-3D-wetland2015\model_state_dict.pkl"
 
 # model settings
-model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet
+model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet or ResNet_MultiScale
 Transformer_mode = "ViT" # if Transformer : ViT CAF
 CNN_mode = "CNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
 HyperMAC_mode = "1D" # if HyperMAC : 1D 2D 3D
-ResNet_mode = "1D" # if ResNet : 1D 2D 3D
-HyperMAC_MultiScale_mode = "2D" # if HyperMAC_MultiScale : 2D 3D
+ResNet_mode = "2D" # if ResNet : 1D 2D 3D
+HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
+ResNet_MultiScale_mode = "3D" # if ResNet_MultiScale : 2D 3D
+patches = 3 # if Transformer
+band_patches = 3 # if Transformer
 
 # training settings
 gpu = 0
-epoch = 200
+epoch = 100
 #HyperMAC 3D =>40-50 HyperMAC 2D =>120 CNN_1D/CNN_3D/CNN_3D_Classifer_1D/RNN_1D =>500 others =>100-200
 test_freq = 500
 batch_size = 32
-patches = 3
-band_patches = 3
-learning_rate = 5e-4
+learning_rate = 5e-3
 weight_decay = 0
 gamma = 0.9
 
@@ -96,6 +99,12 @@ elif model_type == "ResNet":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data
     else:
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data + str(wetland_id)
+
+elif model_type == "ResNet_MultiScale":
+    if HSI_data == "IndianPine":
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_MultiScale_mode + "-" + HSI_data
+    else:
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_MultiScale_mode + "-" + HSI_data + str(wetland_id)
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -135,7 +144,7 @@ elif HSI_data == "wetland":
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
 
-    if model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
+    if model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
         save_colormap_2 = save_colormap_1
 
     elif model_type == "Transformer":
@@ -397,6 +406,43 @@ elif model_type == "ResNet":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
+# ResNet_MultiScale models
+#-------------------------------------------------------------------------------
+elif model_type == "ResNet_MultiScale":
+    if ResNet_MultiScale_mode == "2D":
+        model = ResNet_MultiScale_2D(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 8
+    
+    if ResNet_MultiScale_mode == "3D":
+        model = ResNet_MultiScale_3D(
+            input_channels = band,
+            num_classes = num_classes + 1
+        )
+        patches = 8
+
+    # image and label should be mirrored
+    mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
+    mirror_train_label = mirror_hsi(height, width, 1, np.expand_dims(train_label, axis=2), patch=patches)
+    mirror_test_label = mirror_hsi(height, width, 1, np.expand_dims(test_label, axis=2), patch=patches)
+
+    mirror_train_label = mirror_train_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+    mirror_test_label = mirror_test_label.reshape(mirror_image.shape[0],mirror_image.shape[1])
+
+    train_dataset = HSI_Dataset(mirror_image, mirror_train_label, True, patches)
+    train_loader = Data.DataLoader(train_dataset, batch_size, shuffle = True)
+
+    test_dataset = HSI_Dataset(mirror_image, mirror_test_label, True, patches)
+    test_loader = Data.DataLoader(test_dataset, batch_size, shuffle = True)
+
+    true_dataset = HSI_Dataset(mirror_image, mirror_test_label, False, patches)
+    true_loader = Data.DataLoader(true_dataset, batch_size, shuffle = False)
+
+    total_pos_true = true_dataset.indices
+#-------------------------------------------------------------------------------
+
 # model settings
 #-------------------------------------------------------------------------------
 model = model.cuda()
@@ -466,6 +512,8 @@ if mode == "train":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     elif model_type == "ResNet":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ResNet_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "ResNet_MultiScale":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ResNet_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     # save model and its parameters 
     torch.save(model, time_folder + r"\\model.pkl")
     torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
@@ -481,10 +529,10 @@ prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
-    elif model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
+    elif model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
         prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
 
-if model_type == "CNN_RNN" or model_type =="HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet":
+if model_type == "CNN_RNN" or model_type =="HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
     for i in range(height):
         for j in range(width):
             prediction[i,j] = prediction_temp[padding+i,padding+j]

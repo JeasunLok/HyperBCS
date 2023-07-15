@@ -32,7 +32,7 @@ def load_wetland_data(time_folder, image_path, label_path, wetland_id, mode, val
   image = image[image_mark]
   label = label[label_mark]
   train_label = np.zeros(label.shape)
-  test_label = label
+  test_label = np.copy(label)
   num_classes = int(np.max(label))
   for i in range(num_classes):
     sample = np.array([])

@@ -39,7 +39,7 @@ def store_result(folder, OA, AA, Kappa, CM, model_type, mode, epoch, batch_size,
         f.write("sample_mode : " + sample_mode + "\n")
         f.write("sample_value : " + str(sample_value) + "\n")
         f.write("Model result:" + "\n")
-        f.write("OA : {:.3f}\n".format(OA))
+        f.write("OA : {:.4f}\n".format(OA))
         f.write("AA : {:.3f}\n".format(AA))
         f.write("Kappa : {:.3f}\n".format(Kappa))
         f.write("Confusion Matrix :\n")
