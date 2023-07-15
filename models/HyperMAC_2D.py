@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import torch
-import torch.nn as nn
-
+from torchsummary import summary
+from thop import profile
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -38,7 +36,6 @@ def init_rate_half(tensor):
 def init_rate_0(tensor):
     if tensor is not None:
         tensor.data.fill_(0.)
-
 
 class ACmix(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_att=7, head=4, kernel_conv=3, stride=1, dilation=1):
@@ -211,19 +208,19 @@ class Bottleneck(nn.Module):
 
         if self.downsample is not None:
             identity = self.downsample(x)
-
+            
         out += identity
         out = self.relu(out)
 
         return out
 
 
-class ResNet(nn.Module):
+class HyperMAC_2D(nn.Module):
 
-    def __init__(self, block, layers, input_channels=3, k_att=7, head=4, k_conv=3, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block=Bottleneck, layers=[1], input_channels=32, k_att=7, head=4, k_conv=3, num_classes=11,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
-        super(ResNet, self).__init__()
+        super(HyperMAC_2D, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -239,20 +236,25 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
+        # self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
+        #                        bias=False)
+        
+        self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=1, padding=3,
                                bias=False)
+
+
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0], k_att, head, k_conv)
-        self.layer2 = self._make_layer(block, 128, layers[1], k_att, head, k_conv, stride=2,
-                                       dilate=replace_stride_with_dilation[0])
+        self.layer1 = self.make_layer(block, 64, layers[0], k_att, head, k_conv)
+        # self.layer2 = self._make_layer(block, 128, layers[1], k_att, head, k_conv, stride=2,
+        #                                dilate=replace_stride_with_dilation[0])
         # self.layer3 = self._make_layer(block, 256, layers[2], k_att, head, k_conv, stride=2,
         #                                dilate=replace_stride_with_dilation[1])
         # self.layer4 = self._make_layer(block, 512, layers[3], k_att, head, k_conv, stride=2,
         #                                dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(128 * block.expansion, num_classes)
+        self.fc = nn.Linear(64 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -261,15 +263,7 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-        # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
-        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        if zero_init_residual:
-            for m in self.modules():
-                if isinstance(m, Bottleneck):
-                    nn.init.constant_(m.bn3.weight, 0)
-
-    def _make_layer(self, block, planes, blocks, rate, k, head, stride=1, dilate=False):
+    def make_layer(self, block, planes, blocks, rate, k, head, stride=1, dilate=False):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -293,49 +287,79 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x):
+    def forward(self, x):
         # See note [TorchScript super()]
-        x = x.squeeze(1)
+        # print("1")
         # print(x.shape)
+        
+        x = x.squeeze(1)
+        # print("2")
+        # print(x.shape)
+
         x = self.conv1(x)
+        # print("3")
+        # print(x.shape)
+
         x = self.bn1(x)
+        # print("4")
+        # print(x.shape)
+
         x = self.relu(x)
+        # print("5")
+        # print(x.shape)
+
         x = self.maxpool(x)
+        # print("6")
+        # print(x.shape)
 
         # print("layer1")
         x = self.layer1(x)
+        # print("7")
+        # print(x.shape)
         # print("layer2")
-        x = self.layer2(x)
+        # x = self.layer2(x)
         # print("layer3")
         # x = self.layer3(x)
         # print("layer4")
         # x = self.layer4(x)
 
         x = self.avgpool(x)
+        # print("8")
+        # print(x.shape)
+
         x = torch.flatten(x, 1)
+        # print("9")
+        # print(x.shape)
+        
         x = self.fc(x)
+        # print("10")
+        # print(x.shape)
 
         return x
 
-    def forward(self, x):
-        return self._forward_impl(x)
 
 
-def _resnet(block, layers, input_channels, num_classes, **kwargs):
-    model = ResNet(block, layers, input_channels, num_classes=num_classes, **kwargs)
-    return model
+# def _resnet(block, layers, input_channels, num_classes, **kwargs):
+#     model = HyperMAC_2D(block, layers, input_channels, num_classes=num_classes, **kwargs)
+#     return model
 
 
-def ACmix_ResNet(input_channels, num_classes, layers=[3,4,6,3], **kwargs):
-    return _resnet(Bottleneck, layers, input_channels, num_classes, **kwargs)
+# def ACmix_ResNet(input_channels=3, num_classes=1000, layers=[1,1,6,3], **kwargs):
+#     return _resnet(Bottleneck, layers, input_channels, num_classes, **kwargs)
 
 
 if __name__ == '__main__':
-    model = ACmix_ResNet().cuda()
-    input = torch.randn([2,3,32,32]).cuda()
+    model = HyperMAC_2D().cuda()
+    input = torch.randn([2,32,8,8]).cuda()
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f'{total_trainable_params:,} training parameters.')
     print(model(input).shape)
-    # print(summary(model, torch.zeros((1, 3, 224, 224)).cuda()))
+    flops, params = profile(model, inputs=(input,))
+    print("flops:{:.3f}M".format(flops / 1e6))
+    print("params:{:.3f}M".format(params / 1e6))
+    # --------------------------------------------------#
+    #   用来测试网络能否跑通，同时可查看FLOPs和params
+    # --------------------------------------------------#
+    summary(model, input_size=(1,32,8,8), batch_size=-1)

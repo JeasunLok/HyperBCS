@@ -31,7 +31,7 @@ def train_epoch(model, train_loader, criterion, optimizer, e, epoch):
         label = np.append(label, l.data.cpu().numpy())
         prediction = np.append(prediction, p.data.cpu().numpy())
 
-        loop.set_description(f'Train Epoch [{e}/{epoch}]')
+        loop.set_description(f'Train Epoch [{e+1}/{epoch}]')
         loop.set_postfix({"train_loss":loss_show.average.item(),
                           "train_accuracy": acc.average.item()})
 
