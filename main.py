@@ -11,18 +11,16 @@ from scipy.io import loadmat,savemat
 
 from models.vit_pytorch import ViT
 from models.other_models import MLP_4,CNN_1D,CNN_2D,CNN_3D,CNN_3D_Classifer_1D,RNN_1D
-from models.HyperMAC_1D import HyperMAC_1D
-from models.HyperMAC_2D import HyperMAC_2D
-from models.HyperMAC_3D import HyperMAC_3D
-from models.HyperMAC_MultiScale_2D import HyperMAC_2D_MultiScale
-from models.HyperMAC_MultiScale_2D_FCback import HyperMAC_2D_MultiScale_FCback
-from models.HyperMAC_MultiScale_3D import HyperMAC_3D_MultiScale
-from models.HyperMAC_MultiScale_3D_FCback import HyperMAC_3D_MultiScale_FCback
-from models.ResNet_1D import ResNet_1D
-from models.ResNet_2D import ResNet_2D
-from models.ResNet_3D import ResNet_3D
-from models.ResNet_MultiScale_2D import ResNet_MultiScale_2D
-from models.ResNet_MultiScale_3D import ResNet_MultiScale_3D
+from models.HyperCS_1D import HyperCS_1D
+from models.HyperCS_2D import HyperCS_2D
+from models.HyperCS_3D import HyperCS_3D
+from models.HyperBCS_2D import HyperBCS_2D
+from models.HyperBCS_3D import HyperBCS_3D
+from models.Hyper_1D import Hyper_1D
+from models.Hyper_2D import Hyper_2D
+from models.Hyper_3D import Hyper_3D
+from models.HyperB_2D import HyperB_2D
+from models.HyperB_3D import HyperB_3D
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -37,26 +35,27 @@ from test import test_epoch
 # model mode
 mode = "train" # train or test
 pretrained = False # pretrained or not
-model_path = r"logs\2023-03-23-02-35-43-HyperMAC_MultiScale-3D-wetland2015\model_state_dict.pkl"
+model_path = r"" # model path
 
 # model settings
-model_type = "HyperMAC_MultiScale" # CNN_RNN or Transformer or HyperMAC or HyperMAC_MultiScale or ResNet or ResNet_MultiScale
+model_type = "HyperCS" # CNN_RNN or Transformer or HyperBCS or HyperCS or HyperB or Hype
+
 Transformer_mode = "ViT" # if Transformer : ViT CAF
-CNN_mode = "CNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
-HyperMAC_mode = "1D" # if HyperMAC : 1D 2D 3D
-ResNet_mode = "2D" # if ResNet : 1D 2D 3D
-HyperMAC_MultiScale_mode = "3D" # if HyperMAC_MultiScale : 2D 3D
-ResNet_MultiScale_mode = "3D" # if ResNet_MultiScale : 2D 3D
+CNN_RNN_mode = "RNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+HyperCS_mode = "1D" # if HyperCS : 1D 2D 3D
+Hyper_mode = "1D" # if Hyper : 1D 2D 3D
+HyperBCS_mode = "3D" # if HyperBCS : 2D 3D
+HyperB_mode = "1D" # if HyperB : 2D 3D
+
 patches = 3 # if Transformer
 band_patches = 3 # if Transformer
 
 # training settings
-gpu = 0
+gpu = "0"
 epoch = 100
-#HyperMAC 3D =>40-50 HyperMAC 2D =>120 CNN_1D/CNN_3D/CNN_3D_Classifer_1D/RNN_1D =>500 others =>100-200
 test_freq = 500
-batch_size = 32
-learning_rate = 5e-3
+batch_size = 16
+learning_rate = 5e-4
 weight_decay = 0
 gamma = 0.9
 
@@ -64,7 +63,7 @@ gamma = 0.9
 sample_mode = "fixed" # fixed or percentage
 sample_value = 200 # fixed => numble of samples(int)  percentage => percentage of samples(0-1) 
 HSI_data = "wetland" # IndianPine or wetland
-wetland_id = 2015 # if wetland
+wetland_name = "CamPha" # if wetland MongCai or CamPha
 #-------------------------------------------------------------------------------
 
 # make the run folder in logs
@@ -74,37 +73,37 @@ if model_type == "Transformer":
     if HSI_data == "IndianPine":
         time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Transformer_mode + "-" + HSI_data + "_" + wetland_name
 
 elif model_type == "CNN_RNN":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_RNN_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + CNN_RNN_mode + "-" + HSI_data + "_" + wetland_name
 
-elif model_type == "HyperMAC":
+elif model_type == "HyperCS":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperCS_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperCS_mode + "-" + HSI_data + "_" + wetland_name
 
-elif model_type == "HyperMAC_MultiScale":
+elif model_type == "HyperBCS":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperBCS_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperMAC_MultiScale_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperBCS_mode + "-" + HSI_data + "_" + wetland_name
 
-elif model_type == "ResNet":
+elif model_type == "Hyper":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Hyper_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + Hyper_mode + "-" + HSI_data + "_" + wetland_name
 
-elif model_type == "ResNet_MultiScale":
+elif model_type == "HyperB":
     if HSI_data == "IndianPine":
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_MultiScale_mode + "-" + HSI_data
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperB_mode + "-" + HSI_data
     else:
-        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + ResNet_MultiScale_mode + "-" + HSI_data + str(wetland_id)
+        time_folder = r".\\logs\\" + time.strftime("%Y-%m-%d-%H-%M-%S", time_now) + "-" + model_type + "-" + HyperB_mode + "-" + HSI_data + "_" + wetland_name
 os.makedirs(time_folder)
 #-------------------------------------------------------------------------------
 
@@ -114,7 +113,7 @@ torch.manual_seed(1)
 torch.cuda.manual_seed(1)
 
 # GPU settings
-os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
+os.environ["CUDA_VISIBLE_DEVICES"] = gpu
 cudnn.deterministic = True
 cudnn.benchmark = False
 
@@ -140,20 +139,20 @@ if HSI_data == "IndianPine":
 elif HSI_data == "wetland":
     # color settings
     colormap_mat = loadmat(r".\\data\\wetland_colormap.mat")
-    colormap = colormap_mat["colormap_" + str(wetland_id)]
+    colormap = colormap_mat["colormap_" + wetland_name]
     colormap_1 = np.append("#FFFFFF", colormap)
     save_colormap_1 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap_1.tolist(), 256)
 
-    if model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
+    if model_type == "CNN_RNN" or model_type == "HyperCS" or model_type == "HyperBCS" or model_type == "Hyper" or model_type == "HyperB":
         save_colormap_2 = save_colormap_1
 
     elif model_type == "Transformer":
         save_colormap_2 = mpl.colors.LinearSegmentedColormap.from_list('cmap', colormap.tolist(), 256)
 
     # data loading
-    image_path = r".\\data\\" + str(wetland_id)[-2:] +"_image.mat"
-    label_path = r".\\data\\" + str(wetland_id)[-2:] +"_label.mat"
-    input, train_label, test_label = load_wetland_data(time_folder, image_path, label_path, wetland_id, sample_mode, sample_value, save_colormap_1)
+    image_path = r".\\data\\" + wetland_name + "_image.mat"
+    label_path = r".\\data\\" + wetland_name + "_label.mat"
+    input, train_label, test_label = load_wetland_data(time_folder, image_path, label_path, wetland_name, sample_mode, sample_value, save_colormap_1)
 #-------------------------------------------------------------------------------
 
 # all_data and classes
@@ -213,7 +212,7 @@ if model_type == "Transformer":
 # CNN models
 #-------------------------------------------------------------------------------
 elif model_type == "CNN_RNN":
-    if CNN_mode == "MLP_4":
+    if CNN_RNN_mode == "MLP_4":
         model = MLP_4(
             input_channels = band,
             num_classes = num_classes + 1,
@@ -221,14 +220,14 @@ elif model_type == "CNN_RNN":
         )
         patches = 1
 
-    elif CNN_mode == "CNN_1D":
+    elif CNN_RNN_mode == "CNN_1D":
         model = CNN_1D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 1
 
-    elif CNN_mode == "CNN_2D":
+    elif CNN_RNN_mode == "CNN_2D":
         model = CNN_2D(
             input_channels = band,
             num_classes = num_classes + 1,
@@ -236,7 +235,7 @@ elif model_type == "CNN_RNN":
         )
         patches = 8
 
-    elif CNN_mode == "CNN_3D":
+    elif CNN_RNN_mode == "CNN_3D":
         model = CNN_3D(
             input_channels = band,
             num_classes = num_classes + 1,
@@ -245,7 +244,7 @@ elif model_type == "CNN_RNN":
         )
         patches = 5
 
-    elif CNN_mode == "CNN_3D_Classifer_1D":
+    elif CNN_RNN_mode == "CNN_3D_Classifer_1D":
         model = CNN_3D_Classifer_1D(
             input_channels = band,
             num_classes = num_classes + 1,
@@ -254,7 +253,7 @@ elif model_type == "CNN_RNN":
         )
         patches = 5
     
-    elif CNN_mode == "RNN_1D":
+    elif CNN_RNN_mode == "RNN_1D":
         model = RNN_1D(
             input_channels = band,
             num_classes = num_classes + 1,
@@ -281,25 +280,25 @@ elif model_type == "CNN_RNN":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# HyperMAC models
+# HyperCS models
 #-------------------------------------------------------------------------------
-elif model_type == "HyperMAC":
-    if HyperMAC_mode == "1D":
-        model = HyperMAC_1D(
+elif model_type == "HyperCS":
+    if HyperCS_mode == "1D":
+        model = HyperCS_1D(
             input_channels = 1,
             num_classes = num_classes + 1
         )
         patches = 1
 
-    if HyperMAC_mode == "2D":
-        model = HyperMAC_2D(
+    if HyperCS_mode == "2D":
+        model = HyperCS_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
-    if HyperMAC_mode == "3D":
-        model = HyperMAC_3D(
+    if HyperCS_mode == "3D":
+        model = HyperCS_3D(
             input_channels = band,
             num_classes = num_classes + 1
         )
@@ -325,18 +324,18 @@ elif model_type == "HyperMAC":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# HyperMAC_MultiScale models
+# HyperBCS models
 #-------------------------------------------------------------------------------
-elif model_type == "HyperMAC_MultiScale":
-    if HyperMAC_MultiScale_mode == "2D":
-        model = HyperMAC_2D_MultiScale(
+elif model_type == "HyperBCS":
+    if HyperBCS_mode == "2D":
+        model = HyperBCS_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
-    if HyperMAC_MultiScale_mode == "3D":
-        model = HyperMAC_3D_MultiScale(
+    if HyperBCS_mode == "3D":
+        model = HyperBCS_3D(
             input_channels = band,
             num_classes = num_classes + 1
         )
@@ -362,25 +361,25 @@ elif model_type == "HyperMAC_MultiScale":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# ResNet models
+# Hyper models
 #-------------------------------------------------------------------------------
-elif model_type == "ResNet":
-    if ResNet_mode == "1D":
-        model = ResNet_1D(
+elif model_type == "Hyper":
+    if Hyper_mode == "1D":
+        model = Hyper_1D(
             input_channels = 1,
             num_classes = num_classes + 1
         )
         patches = 1
 
-    if ResNet_mode == "2D":
-        model = ResNet_2D(
+    if Hyper_mode == "2D":
+        model = Hyper_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
-    if ResNet_mode == "3D":
-        model = ResNet_3D(
+    if Hyper_mode == "3D":
+        model = Hyper_3D(
             input_channels = band,
             num_classes = num_classes + 1
         )
@@ -406,18 +405,18 @@ elif model_type == "ResNet":
     total_pos_true = true_dataset.indices
 #-------------------------------------------------------------------------------
 
-# ResNet_MultiScale models
+# HyperB models
 #-------------------------------------------------------------------------------
-elif model_type == "ResNet_MultiScale":
-    if ResNet_MultiScale_mode == "2D":
-        model = ResNet_MultiScale_2D(
+elif model_type == "HyperB":
+    if HyperB_mode == "2D":
+        model = HyperB_2D(
             input_channels = band,
             num_classes = num_classes + 1
         )
         patches = 8
     
-    if ResNet_MultiScale_mode == "3D":
-        model = ResNet_MultiScale_3D(
+    if HyperB_mode == "3D":
+        model = HyperB_3D(
             input_channels = band,
             num_classes = num_classes + 1
         )
@@ -505,15 +504,15 @@ if mode == "train":
     if model_type == "Transformer":
         store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Transformer_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     elif model_type == "CNN_RNN":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "HyperMAC":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "HyperMAC_MultiScale":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperMAC_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "ResNet":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ResNet_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
-    elif model_type == "ResNet_MultiScale":
-        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, ResNet_MultiScale_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, CNN_RNN_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "HyperCS":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperCS_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "HyperBCS":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperBCS_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "Hyper":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, Hyper_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
+    elif model_type == "HyperB":
+        store_result(time_folder, OA_val, AA_val, Kappa_val, CM_val, model_type, HyperB_mode, epoch, batch_size, patches, band_patches, learning_rate, weight_decay, gamma, sample_mode, sample_value)
     # save model and its parameters 
     torch.save(model, time_folder + r"\\model.pkl")
     torch.save(model.state_dict(), time_folder + r"\\model_state_dict.pkl")
@@ -529,10 +528,10 @@ prediction_temp = np.zeros((height+2*padding, width+2*padding), dtype=float)
 for i in range(total_pos_true.shape[0]):
     if model_type == "Transformer":
         prediction[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i] + 1
-    elif model_type == "CNN_RNN" or model_type == "HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
+    elif model_type == "CNN_RNN" or model_type == "HyperCS" or model_type == "HyperBCS" or model_type == "Hyper" or model_type == "HyperB":
         prediction_temp[total_pos_true[i,0], total_pos_true[i,1]] = pre_u[i]
 
-if model_type == "CNN_RNN" or model_type =="HyperMAC" or model_type == "HyperMAC_MultiScale" or model_type == "ResNet" or model_type == "ResNet_MultiScale":
+if model_type == "CNN_RNN" or model_type == "HyperCS" or model_type == "HyperBCS" or model_type == "Hyper" or model_type == "HyperB":
     for i in range(height):
         for j in range(width):
             prediction[i,j] = prediction_temp[padding+i,padding+j]
