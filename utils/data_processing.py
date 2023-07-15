@@ -64,7 +64,7 @@ def position_train_and_test_point(train_data, test_data, label_data, num_classes
 #-------------------------------------------------------------------------------
 def mirror_hsi(height, width, band, input_normalize, patch=5):
     padding = patch//2
-    mirror_hsi = np.zeros((height+2*padding,width+2*padding,band),dtype=float)
+    mirror_hsi = np.zeros((height+2*padding,width+2*padding,band),dtype=np.float16)
     # center zone don't need to pad by mirror 中心区域
     mirror_hsi[padding:(padding+height),padding:(padding+width),:] = input_normalize
     # left mirror 左边镜像
@@ -109,7 +109,7 @@ def gain_neighborhood_band(x_train, band, band_patch, patch=5):
     x_train_reshape = x_train.reshape(x_train.shape[0], patch*patch, band)
 
     # x_train_band : x_train with band-patch which means 2D => 3D
-    x_train_band = np.zeros((x_train.shape[0], patch*patch*band_patch, band),dtype=float)
+    x_train_band = np.zeros((x_train.shape[0], patch*patch*band_patch, band),dtype=np.float16)
 
     # center zone 中心区域
     x_train_band[:,nn*patch*patch:(nn+1)*patch*patch,:] = x_train_reshape
@@ -139,9 +139,9 @@ def gain_neighborhood_band(x_train, band, band_patch, patch=5):
 # 汇总训练数据和测试数据
 #-------------------------------------------------------------------------------
 def train_and_test_data(mirror_image, band, train_point, test_point, true_point, patch=5, band_patch=3):
-    x_train = np.zeros((train_point.shape[0], patch, patch, band), dtype=float)
-    x_test = np.zeros((test_point.shape[0], patch, patch, band), dtype=float)
-    x_true = np.zeros((true_point.shape[0], patch, patch, band), dtype=float)
+    x_train = np.zeros((train_point.shape[0], patch, patch, band), dtype=np.float16)
+    x_test = np.zeros((test_point.shape[0], patch, patch, band), dtype=np.float16)
+    x_true = np.zeros((true_point.shape[0], patch, patch, band), dtype=np.float16)
 
     # 1. get 2D patch
     for i in range(train_point.shape[0]):
