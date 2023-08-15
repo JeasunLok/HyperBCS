@@ -11,8 +11,12 @@ pip install -r requirements.txt
 pip install torch==1.13.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 ### Download our datasets
-Download our datasets then place it in `data` folder
-Baiduyun: https://pan.baidu.com/s/1hyye2fVxoUaOJ6YR_RUSJg (access code: js66)
+Download our datasets then place them in `data` folder
+
+Baiduyun: https://pan.baidu.com/s/1hyye2fVxoUaOJ6YR_RUSJg 
+(access code: js66)
+
+Google Drive: https://drive.google.com/drive/folders/1jjg6Jlyb92pVrUzbdr5fHSMzYQnr2U47
 ### Quick start
 <b> Dataset MongCai </b>
 ```
