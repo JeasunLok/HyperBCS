@@ -1,4 +1,4 @@
-## HyperBCS: Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification
+# HyperBCS: Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification
 Code repository of HyperBCS by [Junshen Luo](https://github.com/JeasunLok), Zhi He, Haomei Lin, Heqian Wu
 ***
 ## How to use it?
