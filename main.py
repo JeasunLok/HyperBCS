@@ -38,7 +38,7 @@ pretrained = False # pretrained or not
 model_path = r"" # model path
 
 # model settings
-model_type = "HyperCS" # CNN_RNN or Transformer or HyperBCS or HyperCS or HyperB or Hype
+model_type = "HyperCS" # CNN_RNN or Transformer or HyperBCS or HyperCS or HyperB or Hyper
 
 Transformer_mode = "ViT" # if Transformer : ViT CAF
 CNN_RNN_mode = "RNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
