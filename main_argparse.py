@@ -22,6 +22,8 @@ from models.Hyper_2D import Hyper_2D
 from models.Hyper_3D import Hyper_3D
 from models.HyperB_2D import HyperB_2D
 from models.HyperB_3D import HyperB_3D
+from models.HybridSN import HybridSN
+from models.SwinTransformer import SwinTransformer
 
 from utils.data_processing import position_train_and_test_point,mirror_hsi,train_and_test_data,train_and_test_label
 from utils.data_preparation import HSI_Dataset
@@ -42,7 +44,7 @@ model_path = r"" # model path
 model_type = "HyperBCS" # CNN_RNN or Transformer or HyperBCS or HyperCS or HyperB or Hyper
 
 Transformer_mode = "ViT" # if Transformer : ViT CAF
-CNN_RNN_mode = "RNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D
+CNN_RNN_mode = "RNN_1D" # if CNN_RNN : MLP_4 CNN_1D CNN_2D CNN_3D CNN_3D_Classifer_1D RNN_1D HybridSN SwinTransformer
 HyperCS_mode = "1D" # if HyperCS : 1D 2D 3D
 Hyper_mode = "1D" # if Hyper : 1D 2D 3D
 HyperBCS_mode = "3D" # if HyperBCS : 2D 3D
@@ -71,7 +73,7 @@ wetland_name = "CamPha" # if wetland MongCai or CamPha
 parser = argparse.ArgumentParser(description='HyperBCS implementation')
 
 parser.add_argument('-mt', '--model_type', type=str, default="HyperBCS", choices=['CNN_RNN', 'Transformer', 'HyperBCS', 'HyperCS', 'HyperB', 'Hyper'], help="model type selection")
-parser.add_argument('-crm', '--cnn_rnn_mode', type=str, default="CNN_3D_Classifer_1D", choices=['MLP_4', 'CNN_1D', 'CNN_2D', 'CNN_3D', 'CNN_3D_Classifer_1D', 'RNN_1D'], help="CNN and RNN based models you can choose")
+parser.add_argument('-crm', '--cnn_rnn_mode', type=str, default="CNN_3D_Classifer_1D", choices=['MLP_4', 'CNN_1D', 'CNN_2D', 'CNN_3D', 'CNN_3D_Classifer_1D', 'RNN_1D', 'HybridSN', 'SwinTransformer'], help="CNN and RNN based models you can choose")
 parser.add_argument('-tm', '--transformer_mode', type=str, default="CAF", choices=['ViT', 'CAF'], help="Transformer based models you can choose")
 parser.add_argument('-hbcsm', '--hyperbcs_mode', type=str, default="3D", choices=['2D', '3D'], help="HyperBCS models you can choose")
 parser.add_argument('-hcsm', '--hypercs_mode', type=str, default="3D", choices=['1D', '2D', '3D'], help="HyperBCS models without BSAM you can choose")
@@ -299,6 +301,28 @@ elif model_type == "CNN_RNN":
             num_classes = num_classes + 1,
         )
         patches = 1
+
+    elif CNN_RNN_mode == "HybridSN":
+        model = HybridSN(
+            in_chs = 32, 
+            patch_size = 16, 
+            class_nums = num_classes + 1,
+        )
+        patches = 16
+    
+    elif CNN_RNN_mode == "SwinTransformer":
+        model = SwinTransformer(
+            hidden_dim = 32,
+            layers = (2, 2, 6, 2),
+            heads = (3, 6, 12, 24),
+            channels = 32,
+            num_classes = num_classes + 1,
+            head_dim = 16,
+            window_size = 3,
+            downscaling_factors = (2, 2, 2, 1),
+            relative_pos_embedding=True
+        )
+        patches = 24
 
     # image and label should be mirrored
     mirror_image = mirror_hsi(height, width, band, input_normalize, patch=patches)
