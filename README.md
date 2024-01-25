@@ -62,5 +62,6 @@ J. Luo, Z. He, H. Lin and H. Wu, "Biscale Convolutional Self-Attention Network f
 ***
 ## Contact Information
 Junshen Luo: luojsh7@mail2.sysu.edu.cn
+
 Junshen Luo is with School of Geography and Planning, Sun Yat-sen University, Guangzhou 510275, China
 ***
