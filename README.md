@@ -1,10 +1,14 @@
 # HyperBCS: Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification
-<b> Official code repository of HyperBCS by [Junshen Luo](https://github.com/JeasunLok), Zhi He, Haomei Lin, Heqian Wu. </b>
+
+***
+# Introduction
+
+<b> Official implementation of [HyperBCS](https://ieeexplore.ieee.org/abstract/document/10384648) by [Junshen Luo](https://github.com/JeasunLok), Zhi He, Haomei Lin, Heqian Wu. </b>
 ***
 ![](images/3D-HyperBCS.jpg)
 
 ***
-## How to use it?
+## How to use it?s
 ### 1. Installation
 ```
 git clone https://github.com/JeasunLok/HyperBCS.git && cd HyperBCS
@@ -38,4 +42,25 @@ python main_argparse.py -mt HyperBCS -hbcsm 3D -e 100 -lr 5e-3 -bs 32 -d CamPha
 ```
 python main_argparse.py -h
 ```
+
+***
+## Citation
+<b> Please kindly cite the papers if this code is useful and helpful for your research. </b>
+
+J. Luo, Z. He, H. Lin and H. Wu, "Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification," in IEEE Geoscience and Remote Sensing Letters, vol. 21, pp. 1-5, 2024, Art no. 6002705, doi: 10.1109/LGRS.2024.3351551.
+
+```
+@article{luo2024biscale,
+  title={Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification},
+  author={Luo, Junshen and He, Zhi and Lin, Haomei and Wu, Heqian},
+  journal={IEEE Geoscience and Remote Sensing Letters},
+  year={2024},
+  publisher={IEEE}
+}
+```
+
+***
+## Contact Information
+Junshen Luo: luojsh7@mail2.sysu.edu.cn
+Junshen Luo is with School of Geography and Planning, Sun Yat-sen University, Guangzhou 510275, China
 ***
