@@ -8,7 +8,7 @@
 ![](images/3D-HyperBCS.jpg)
 
 ***
-## How to use it?s
+## How to use it?
 ### 1. Installation
 ```
 git clone https://github.com/JeasunLok/HyperBCS.git && cd HyperBCS
@@ -27,7 +27,7 @@ Baiduyun: https://pan.baidu.com/s/1hyye2fVxoUaOJ6YR_RUSJg
 
 Google Drive: https://drive.google.com/drive/folders/1jjg6Jlyb92pVrUzbdr5fHSMzYQnr2U47
 
-### 3. Quick start to use our SOTA model HyberBCS
+### 3. Quick start to use our SOTA model 3D-HyperBCS
 
 <b> Dataset MongCai </b>
 ```
