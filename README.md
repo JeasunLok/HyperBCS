@@ -3,7 +3,7 @@
 ***
 # Introduction
 
-<b> Official implementation of [HyperBCS](https://ieeexplore.ieee.org/abstract/document/10384648) by [Junshen Luo](https://github.com/JeasunLok), Zhi He, Haomei Lin, Heqian Wu. </b>
+<b> Official implementation of [HyperBCS](https://ieeexplore.ieee.org/document/10384648) by [Junshen Luo](https://github.com/JeasunLok), Zhi He, Haomei Lin, Heqian Wu. </b>
 ***
 ![](images/3D-HyperBCS.jpg)
 
