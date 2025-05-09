@@ -1,4 +1,4 @@
-# HyperBCS: Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification
+# Biscale Convolutional Self-Attention Network for Hyperspectral Coastal Wetlands Classification
 
 ***
 # Introduction
